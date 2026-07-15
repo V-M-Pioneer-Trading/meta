@@ -1,0 +1,60 @@
+services:
+  mysql:
+    container_name: vnm-agent-service-db
+    restart: always
+    image: mysql:latest
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: example
+      MYSQL_DATABASE: vnm-agent-db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: pass
+    volumes:
+      - mysql_datavolume:/var/lib/mysql
+
+  agent-service:
+    build:
+      context: ../agent-service
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: user
+      MYSQL_PASSWORD: pass
+      MYSQL_DATABASE: vnm-agent-db
+      CORS_ALLOWED_ORIGIN: http://localhost:3000
+    depends_on:
+      - mysql
+
+  navigation-service:
+    build:
+      context: ../navigation-service
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8080"
+    environment:
+      SQLITE_DB_PATH: /data/nav.db
+      CORS_ALLOWED_ORIGIN: http://localhost:3000
+    volumes:
+      - nav_data:/data
+
+  fleet-service:
+    build:
+      context: ../fleet-service
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      SPACETRADERS_BASE_URL: https://api.spacetraders.io/v2
+      AGENT_SERVICE_URL: http://agent-service:80
+      CORS_ALLOWED_ORIGIN: http://localhost:3000
+    depends_on:
+      - agent-service
+
+volumes:
+  mysql_datavolume:
+  nav_data:
