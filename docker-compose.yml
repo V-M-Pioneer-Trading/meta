@@ -12,6 +12,11 @@ services:
       MYSQL_PASSWORD: pass
     volumes:
       - mysql_datavolume:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pexample"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   agent-service:
     build:
@@ -27,7 +32,8 @@ services:
       MYSQL_DATABASE: vnm-agent-db
       CORS_ALLOWED_ORIGIN: http://localhost:3000
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
 
   navigation-service:
     build:
