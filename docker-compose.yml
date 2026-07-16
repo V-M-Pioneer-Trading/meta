@@ -56,7 +56,7 @@ services:
     environment:
       PORT: 3001
       SPACETRADERS_BASE_URL: https://api.spacetraders.io/v2
-      AGENT_SERVICE_URL: http://agent-service:80
+      AGENT_SERVICE_URL: http://agent-service:80/api/agent
       CORS_ALLOWED_ORIGIN: http://localhost:3000
     depends_on:
       - agent-service
