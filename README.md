@@ -33,9 +33,10 @@ command-interface (browser)
   live in fleet-service, which is stateless and calls SpaceTraders directly — except
   deliver-contract, which also calls agent-service afterward to record delivery history.
 - **POC gameplay scope** (single system, mining loop only): orbit, dock, navigate, extract,
-  survey, extract-with-survey, refuel, sell-cargo, cooldown, cargo, accept/fulfill/deliver
-  contract. Explicitly out of scope for the POC: siphon, jettison, transfer-cargo, jump, warp,
-  scan-*, mounts/modules install-remove, repair, scrap, purchase-cargo, purchase-ship.
+  survey, extract-with-survey, refuel, sell-cargo, purchase-cargo, transfer-cargo, patch-nav
+  (flight mode), cooldown, cargo, accept/fulfill/deliver contract. Explicitly out of scope for the
+  POC: siphon, jettison, jump, warp, scan-*, mounts/modules install-remove, repair, scrap,
+  purchase-ship.
 - **Map rendering**: no backend aggregation endpoint. The frontend fetches waypoints from
   navigation-service and ship positions from agent-service and merges them client-side for a
   single-system view.
