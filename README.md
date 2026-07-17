@@ -83,3 +83,33 @@ Each service exposes its own OpenAPI/Swagger UI:
 - navigation-service: http://localhost:8081/swagger-ui.html
 - agent-service: http://localhost:8080/swagger/index.html
 - fleet-service: http://localhost:3001/swagger
+
+## Production deployment
+
+Pending infrastructure apply (Terraform is written and PR'd, not yet applied — see the PR
+list below). Once live, the whole stack is reachable at
+[spacetraders.radomskyi.com](https://spacetraders.radomskyi.com):
+
+```
+                    spacetraders.radomskyi.com (CloudFront, one distribution)
+                              │
+        ┌───────────┬─────────┴──────────┬──────────────────┐
+        │            │                    │                  │
+   default (*)   /api/v1/*           /api/agent/*        /api/fleet/*
+        │            │                    │                  │
+        ▼            ▼                    ▼                  ▼
+  S3 (command-   navigation-service   agent-service      fleet-service
+   interface's                    (shared EC2 host, --network host, each behind its own
+   Vite build)                     security-group rule scoped to CloudFront's IP range)
+                                              │
+                                        agent-service's MySQL
+                                     (same host, own EBS volume)
+```
+
+- Backend hosting: `V-M-Pioneer-Trading/infrastructure` — `navigation-service/`, `agent-service/`,
+  `fleet-service/` Terraform stacks, each SSM-bootstrapped onto one shared EC2 host.
+- Frontend hosting + routing: `mradomsky/infrastructure` — `projects/spacetraders/` stack (S3 +
+  CloudFront + ACM + Route53).
+- Deploy: every service auto-deploys on merge to main (CI pushes the image, then triggers an SSM
+  redeploy on the host). command-interface auto-deploys via S3 sync + CloudFront invalidation.
+- GHCR images are public for all three backends (no registry auth needed to pull).
