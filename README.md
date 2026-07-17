@@ -11,13 +11,14 @@ Cross-cutting/organization-wide issues that don't belong to a single service als
 | [agent-service](https://github.com/V-M-Pioneer-Trading/agent-service) | Go | Agent profile, ship list/detail (read), contracts (read + accept/fulfill + delivery history) |
 | [fleet-service](https://github.com/V-M-Pioneer-Trading/fleet-service) | Node/TS | Ship actions: orbit, dock, navigate, extract, survey, refuel, sell, cargo, cooldown, deliver-contract |
 | [command-interface](https://github.com/V-M-Pioneer-Trading/command-interface) | React | Frontend (LCARS-themed POC UI) |
+| [st-gateway](https://github.com/V-M-Pioneer-Trading/st-gateway) | Node/TS | Global SpaceTraders rate budget, priority queueing, centralized retry/429 handling |
 
 ```
 command-interface (browser)
     │  Authorization: Bearer <token>  (pasted in once, held client-side)
-    ├──────────────► navigation-service   (waypoints / market / shipyard)
-    ├──────────────► agent-service        (agent / ships / contracts)
-    └──────────────► fleet-service        (ship actions) ──► agent-service
+    ├──────────────► navigation-service   (waypoints / market / shipyard) ──┐
+    ├──────────────► agent-service        (agent / ships / contracts) ─────┼──► st-gateway ──► SpaceTraders
+    └──────────────► fleet-service        (ship actions) ──► agent-service─┘
                                                               (records contract deliveries)
 ```
 
@@ -40,19 +41,25 @@ command-interface (browser)
 - **Map rendering**: no backend aggregation endpoint. The frontend fetches waypoints from
   navigation-service and ship positions from agent-service and merges them client-side for a
   single-system view.
-- **Rate limiting**: not yet handled — see
-  [issue #1](https://github.com/V-M-Pioneer-Trading/meta/issues/1). All three services call
-  SpaceTraders independently today; expect 429s once more than one is exercised concurrently.
+- **Rate limiting**: all outbound SpaceTraders calls from navigation-service, agent-service, and
+  fleet-service route through st-gateway (`ST_GATEWAY_URL`, `/proxy/<path>`), which owns the
+  single global rate budget, priority queueing (interactive > background), and centralized
+  retry/429 handling. Closes [issue #1](https://github.com/V-M-Pioneer-Trading/meta/issues/1).
+  Today every request the three services make is browser-originated, so each tags its outbound
+  calls `X-Priority: interactive`; once automation-service calls these services directly
+  (background traffic), that tagging needs to become conditional on the caller instead of
+  hardcoded.
 
 ## Running everything locally
 
-Requires all four repos checked out as siblings:
+Requires all five repos checked out as siblings:
 
 ```
 spacetraders/
 ├── agent-service/
 ├── navigation-service/
 ├── fleet-service/
+├── st-gateway/
 ├── command-interface/
 └── meta/            ← this repo
 ```
@@ -64,6 +71,7 @@ docker compose up --build
 ```
 
 Starts:
+- `st-gateway` on http://localhost:3002 (SpaceTraders rate budget / proxy)
 - `agent-service` on http://localhost:8080 (MySQL-backed)
 - `navigation-service` on http://localhost:8081 (SQLite-backed)
 - `fleet-service` on http://localhost:3001 (stateless)
