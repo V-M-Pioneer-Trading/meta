@@ -1,3 +1,5 @@
+name: spacetraders
+
 services:
   st-gateway:
     build:
