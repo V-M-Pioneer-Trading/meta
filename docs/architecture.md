@@ -173,8 +173,7 @@ Where things stand today:
   trade arbitrage and multi-system operations.
 - **Known gaps tracked in issues**: priority tagging is hardcoded to
   `interactive` in the services rather than derived from the caller, so
-  autopilot traffic currently jumps the queue it was designed to yield; the meta docker-compose doesn't yet include automation-service and
-  ai-service.
+  autopilot traffic currently jumps the queue it was designed to yield.
 
 See the [meta issue tracker](https://github.com/V-M-Pioneer-Trading/meta/issues)
 for the full list.

@@ -20,6 +20,11 @@ spacetraders/
 └── meta/            ← this repo
 ```
 
+Copy `.env.example` to `.env` (same directory as `docker-compose.yml`) and
+fill in `MINING_SHIP_SYMBOL` and `OPENAI_API_KEY` — both are required by
+automation-service/ai-service respectively, with no sensible compose-level
+default. Compose loads `.env` automatically.
+
 From `meta/`:
 
 ```bash
@@ -34,13 +39,11 @@ Starts:
 | agent-service | 8080 | MySQL (container) |
 | navigation-service | 8081 | SQLite |
 | fleet-service | 3001 | none |
+| automation-service | 3003 | Postgres (container) |
+| ai-service | 3004 | none (in-memory dedupe state) |
 
 The frontend runs separately: `npm run dev` in `command-interface/` serves
 http://localhost:3000, pinned to match the backends' default CORS origin.
-
-automation-service and ai-service are **not yet in the compose file** — run
-them from their repos with `npm run dev` (automation-service additionally
-needs a Postgres and the env vars listed in its README).
 
 Each backend exposes its own Swagger UI:
 

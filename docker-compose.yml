@@ -80,6 +80,67 @@ services:
       - agent-service
       - st-gateway
 
+  automation-postgres:
+    container_name: vnm-automation-service-db
+    restart: always
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: automation
+      POSTGRES_DB: automation
+    volumes:
+      - automation_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  automation-service:
+    build:
+      context: ../automation-service
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3003"
+    environment:
+      PORT: 3003
+      DATABASE_URL: postgres://postgres:automation@automation-postgres:5432/automation
+      NAVIGATION_SERVICE_URL: http://navigation-service:8080/api/v1
+      AGENT_SERVICE_URL: http://agent-service:80/api/agent
+      FLEET_SERVICE_URL: http://fleet-service:3001/api/fleet
+      # No sensible default — set in a .env file next to this compose file
+      # (see .env.example) or in the shell before `docker compose up`.
+      MINING_SHIP_SYMBOL: ${MINING_SHIP_SYMBOL:-}
+      ANOMALY_WEBHOOK_URL: http://ai-service:3004/webhooks/anomaly
+      CORS_ALLOWED_ORIGIN: http://localhost:3000
+    depends_on:
+      automation-postgres:
+        condition: service_healthy
+      agent-service:
+        condition: service_started
+      navigation-service:
+        condition: service_started
+      fleet-service:
+        condition: service_started
+
+  ai-service:
+    build:
+      context: ../ai-service
+      dockerfile: Dockerfile
+    ports:
+      - "3004:3004"
+    environment:
+      PORT: 3004
+      AUTOMATION_SERVICE_URL: http://automation-service:3003
+      # No sensible default — set in a .env file next to this compose file
+      # (see .env.example) or in the shell before `docker compose up`.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    depends_on:
+      - automation-service
+
 volumes:
   mysql_datavolume:
   nav_data:
+  automation_postgres_data:
