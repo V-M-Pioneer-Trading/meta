@@ -53,10 +53,9 @@ Each backend exposes its own Swagger UI:
 
 ## Production deployment
 
-Pending infrastructure apply (Terraform is written and PR'd, not yet applied).
-Once live, the whole stack is reachable at
-[spacetraders.radomskyi.com](https://spacetraders.radomskyi.com) behind a
-single CloudFront distribution:
+Live at [spacetraders.radomskyi.com](https://spacetraders.radomskyi.com)
+behind a single CloudFront distribution. Every backend service self-mounts
+under a consistent `/api/<service>/v1` prefix:
 
 ```mermaid
 graph TD
@@ -65,19 +64,25 @@ graph TD
     NAV["navigation-service"]
     AGENT["agent-service"]
     FLEET["fleet-service"]
+    AUTO["automation-service"]
     MYSQL["MySQL<br/>(same host, own EBS volume)"]
+    PG["Postgres<br/>(same host, own EBS volume)"]
 
     CF -- "default (*)" --> S3
-    CF -- "/api/v1/*" --> NAV
-    CF -- "/api/agent/*" --> AGENT
-    CF -- "/api/fleet/*" --> FLEET
+    CF -- "/api/navigation/v1/*" --> NAV
+    CF -- "/api/agent/v1/*" --> AGENT
+    CF -- "/api/fleet/v1/*" --> FLEET
+    CF -- "/api/automation/v1/*" --> AUTO
     AGENT --> MYSQL
+    AUTO --> PG
 
     subgraph EC2["shared EC2 host (--network host, SG scoped to CloudFront IPs)"]
         NAV
         AGENT
         FLEET
+        AUTO
         MYSQL
+        PG
     end
 ```
 
