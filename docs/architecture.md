@@ -171,9 +171,6 @@ Where things stand today:
   scale to N ships, but dispatch is still keyed to one configured mining ship.
   Fleet expansion (auto-purchasing ships) is the first v2 item, followed by
   trade arbitrage and multi-system operations.
-- **Known gaps tracked in issues**: priority tagging is hardcoded to
-  `interactive` in the services rather than derived from the caller, so
-  autopilot traffic currently jumps the queue it was designed to yield.
 
 See the [meta issue tracker](https://github.com/V-M-Pioneer-Trading/meta/issues)
 for the full list.
