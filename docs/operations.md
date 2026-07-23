@@ -86,6 +86,32 @@ graph TD
 - **Frontend hosting + routing**: `mradomsky/infrastructure` —
   `projects/spacetraders/` stack (S3 + CloudFront + ACM + Route53).
 - **Images**: GHCR, public for all backends — no registry auth needed to pull.
+- **st-gateway and ai-service have no CloudFront origin** — both are
+  internal-only (st-gateway is only ever called server-to-server as "the only
+  door to SpaceTraders"; ai-service is only ever called by automation-service's
+  anomaly webhook). Neither is reachable from the browser in production, so
+  they're exempt from the health-check convention below.
+
+### Health-check routing
+
+Every backend exposes a bare, unauthenticated `GET /health` for local
+dev/compose, *and* the same handler again at `/api/<service>/health` — still
+unversioned (no `/v1`), but scoped like the rest of the service's API surface.
+The second path exists because CloudFront routes multiple backend origins off
+one shared production domain by path pattern; a bare `/health` request from
+the browser would either collide across services (every service resolving to
+the same origin-relative URL) or hit no configured pattern at all and fall
+through to the SPA's `index.html` — a false-positive 200 that looks like a
+passing health check regardless of whether the backend is actually up.
+
+command-interface's `SystemStatus` panel (`src/api/healthService.js`) polls
+`/api/<service>/health` directly from the browser, once per monitored
+service, unauthenticated, before and after login — see `MONITORED_SERVICES`
+for the exact path per service. CloudFront
+(`mradomsky/infrastructure`, `projects/spacetraders/main.tf`) has a matching
+`ordered_cache_behavior` for `/api/<service>/health` alongside the existing
+`/api/<service>/v1/*` pattern, for each of navigation-service, agent-service,
+fleet-service, and automation-service.
 
 ## CI and deploys
 
