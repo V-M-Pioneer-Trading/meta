@@ -27,7 +27,7 @@ graph TD
     AI["ai-service<br/>(OpenAI supervisor)"]
     AUTO["automation-service<br/>(deterministic autopilot engine)"]
     NAV["navigation-service<br/>(waypoints, markets, shipyards)"]
-    AGENT["agent-service<br/>(agent, ships, contracts)"]
+    AGENT["agent-service<br/>(agent, ships, contracts, transactions)"]
     FLEET["fleet-service<br/>(ship actions)"]
     GW["st-gateway<br/>(global rate budget)"]
     ST["SpaceTraders API"]
@@ -54,8 +54,8 @@ graph TD
 | Service | Stack | Role |
 |---|---|---|
 | [navigation-service](https://github.com/V-M-Pioneer-Trading/navigation-service) | Java 21 / Spring Boot / SQLite | Read-and-cache layer for universe data: waypoints, systems, market prices, shipyards |
-| [agent-service](https://github.com/V-M-Pioneer-Trading/agent-service) | Go / MySQL | Agent profile, ship list, contracts (read + accept/fulfill), contract delivery history |
-| [fleet-service](https://github.com/V-M-Pioneer-Trading/fleet-service) | Node/TypeScript | All ship *actions*: orbit, dock, navigate, extract, survey, refuel, sell, deliver. Stateless |
+| [agent-service](https://github.com/V-M-Pioneer-Trading/agent-service) | Go / MySQL | Agent profile, ship list, contracts (read + accept/fulfill), contract delivery history, ship/cargo purchases and cargo sells, transaction history |
+| [fleet-service](https://github.com/V-M-Pioneer-Trading/fleet-service) | Node/TypeScript | All ship *actions*: orbit, dock, navigate, extract, survey, refuel, deliver. Stateless |
 | [st-gateway](https://github.com/V-M-Pioneer-Trading/st-gateway) | Node/TypeScript | The only door to the SpaceTraders API: one global rate budget, priority queueing, centralized retries |
 | [automation-service](https://github.com/V-M-Pioneer-Trading/automation-service) | Node/TypeScript / Postgres | The deterministic autopilot engine: planner, per-ship state machines, anomaly checks, event log |
 | [ai-service](https://github.com/V-M-Pioneer-Trading/ai-service) | Node/TypeScript | The AI supervisor: receives anomalies, runs a bounded OpenAI tool loop that may tune knobs or trigger replans |
@@ -73,11 +73,16 @@ The split follows the shape of the game itself:
   never changes, so it's fetched once and kept forever; market prices get a
   short TTL instead.
 - **Reads about you** (agent, ships, contracts) live in agent-service, which
-  also owns the one piece of gameplay bookkeeping the game API doesn't provide:
-  a history of contract deliveries.
+  also owns the gameplay bookkeeping the game API doesn't provide itself: a
+  history of contract deliveries, and — since these are the actions that spend
+  or earn credits — ship/cargo purchases and cargo sells, calling SpaceTraders
+  directly for them (via st-gateway) the same way it already does for
+  accept/fulfill-contract, rather than routing through fleet-service.
 - **Actions** (anything that moves a ship or its cargo) live in fleet-service,
   which is deliberately stateless — it translates action requests into
-  SpaceTraders calls and returns the result.
+  SpaceTraders calls and returns the result. The exception is purchases and
+  sells, which live in agent-service instead (see above) so the credit-moving
+  actions and their transaction history stay together.
 - **Orchestration** (deciding what each ship should do next) lives in
   automation-service, which never calls SpaceTraders directly. It only speaks to
   the three services above, so caching and delivery history keep working no
@@ -135,7 +140,7 @@ debugged deterministically.
 
 Each service picks the smallest storage that fits: SQLite for
 navigation-service's cache (single-writer, read-heavy), MySQL for
-agent-service's delivery history, Postgres for automation-service's task
+agent-service's delivery and transaction history, Postgres for automation-service's task
 state/event log/knobs, and no database at all for fleet-service, st-gateway,
 and ai-service, which are stateless by design.
 
