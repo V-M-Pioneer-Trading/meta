@@ -195,3 +195,29 @@ and assert observable behavior only. See
 [architecture.md](architecture.md#testing-one-seam-per-service) for the
 rationale. automation-service's suite runs against a real Postgres (started
 via a one-line `docker run`, see its README) with an injectable clock.
+
+The one deliberate exception is automation-service's scoring model
+(`src/scoring.ts`), which is unit-tested directly — it's pure arithmetic with
+no I/O, it's the part most worth being certain about, and reaching it only
+through HTTP would mean constructing a fleet to assert a multiplication.
+
+## Tuning the autopilot
+
+Knobs are edited through the dashboard's Knobs panel or
+`PUT /api/automation/v1/planner/knobs/:name`, and they're grouped into three
+classes — `policy` (yours to tune), `alert` (operator-only thresholds), and
+`model` (values the fleet measures for itself). See
+[automation-service's README](https://github.com/V-M-Pioneer-Trading/automation-service#knobs).
+
+Before changing a knob in production, replay it against what the fleet has
+already decided:
+
+```bash
+npm run replay -- --since 6h --set mine.taskWeight=2
+```
+
+That re-scores past planner decisions under the proposed value and reports how
+many would have gone differently. Zero flips means the change does nothing —
+worth knowing before you attribute a later swing in profit to it. It needs
+`DATABASE_URL` pointing at automation-service's Postgres and makes no network
+calls of its own.

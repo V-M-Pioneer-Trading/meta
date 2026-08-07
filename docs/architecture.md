@@ -19,6 +19,28 @@ top as a monitor**. Coded algorithms handle routing, pricing, and scheduling. An
 AI supervisor watches health metrics and nudges parameters when things drift —
 but it is never in the hot loop, and the fleet keeps running when it's down.
 
+## Why there are eight services
+
+Because the split is the exercise, not because the workload needs it.
+
+One ship mining one system at two requests per second is comfortably a single
+process — probably a single file. Eight services, four datastores and a rate
+gateway exist here to work through service boundaries, a shared global rate
+budget, per-service persistence choices, and an AI component fenced off from the
+deterministic core. Those are the problems worth practising on, and they're only
+real when the boundaries are real.
+
+The cost is honest: a change that touches routing and dispatch touches two
+repos, and local development needs `docker compose`. That's the trade being
+made deliberately, and it's the right one for what this project is for. It would
+be the wrong one if the goal were simply to mine efficiently.
+
+Where the same reasoning pointed the other way, it was followed. Contract
+evaluation is an inline function call rather than the background scheduler it
+started as, because the scheduler raced the planner. Scoring is one small pure
+module rather than a service. The test suites drive real HTTP against real
+databases rather than mocking the seams apart.
+
 ## System map
 
 ```mermaid
@@ -127,6 +149,41 @@ stream. ai-service's only levers are writing bounded configuration values
 the fleet simply continues with its current parameters. This makes AI outages
 degrade to "no tuning", never "no fleet", and makes every decision auditable.
 
+### The planner scores on what it measured, not what it was told
+
+Every number the planner scores with — what a mining cycle earns at a given
+field, how fast ships fly, what fuel costs — is calibrated from the fleet's own
+completed work, with a configured value used only until there's data.
+
+This started as hand-typed constants, and the constants quietly broke the model.
+With one flat revenue estimate shared by every asteroid field, and speed and
+overhead also constant, every term but distance cancelled out of the comparison:
+the planner could only ever choose the nearest reachable field, and the
+mining-vs-contract trade-off hinged on a single number nobody could calibrate.
+Measuring per-field revenue is what makes the scoring do real work.
+See [algorithms.md](algorithms.md#what-the-numbers-come-from).
+
+### Knobs are classified by what kind of number they are
+
+`model` knobs describe how the universe behaves and are calibrated from
+observation. `policy` knobs are preferences with no measurable true value.
+`alert` knobs are the thresholds that decide when something is wrong.
+
+The AI supervisor may write `policy` and nothing else. The `alert` fence matters
+most: an agent that can widen its own alarm thresholds will eventually resolve
+"profit dropped" by deciding profit drops are fine. The `model` fence is subtler
+— editing a measured value doesn't change reality, only what the planner
+believes about it.
+
+### Decisions are replayable, and there's a tool that does it
+
+Planner decisions log every input they used, and scoring is pure arithmetic over
+exactly those inputs — no clock, no network. `npm run replay` in
+automation-service re-scores past decisions under different knob values and
+reports how many would have gone differently. A knob change that flips nothing
+is a knob change that does nothing, which is worth knowing before you attribute
+a later swing in profit to it.
+
 ### Everything is an event
 
 automation-service appends every lifecycle transition, planner decision, ship
@@ -153,6 +210,11 @@ internals, state-machine step ordering, and queue implementations stay
 swappable. automation-service's tests additionally run against a real Postgres
 with an injectable clock, so multi-minute transits resolve instantly.
 
+The one deliberate exception is the scoring model, which is unit-tested
+directly. It's pure arithmetic with no I/O, it's the part most worth being
+certain about, and testing it only through the HTTP boundary would mean
+constructing a fleet to assert a multiplication.
+
 ## The original design
 
 The autopilot design was worked out in interview rounds before implementation;
@@ -168,8 +230,8 @@ Where things stand today:
 
 - **Live and merged**: all seven services plus the MCP server; the full
   single-ship autopilot loop (mining, contracts, scouting), shadow mode,
-  anomaly detection, metrics, knobs, the AI supervisor, and the dashboard
-  panels.
+  anomaly detection, metrics, classified knobs calibrated from observation, the
+  decision replay tool, the AI supervisor, and the dashboard panels.
 - **Built but not yet applied**: production Terraform (see
   [operations.md](operations.md#production-deployment)).
 - **Known single-ship scope**: the planner and replan machinery are written to
@@ -177,5 +239,8 @@ Where things stand today:
   Fleet expansion (auto-purchasing ships) is the first v2 item, followed by
   trade arbitrage and multi-system operations.
 
-See the [meta issue tracker](https://github.com/V-M-Pioneer-Trading/meta/issues)
-for the full list.
+The full list of what the implementation deliberately doesn't do yet lives in
+[automation-service's known limitations](https://github.com/V-M-Pioneer-Trading/automation-service#known-limitations),
+kept in one place rather than scattered through the docs. See the
+[meta issue tracker](https://github.com/V-M-Pioneer-Trading/meta/issues) for
+planned work.
