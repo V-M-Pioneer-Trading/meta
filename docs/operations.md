@@ -54,7 +54,8 @@ Each backend exposes its own Swagger UI:
 ## Production deployment
 
 Live at [spacetraders.radomskyi.com](https://spacetraders.radomskyi.com)
-behind a single CloudFront distribution:
+behind a single CloudFront distribution. Every backend service self-mounts
+under a consistent `/api/<service>/v1` prefix:
 
 ```mermaid
 graph TD
@@ -69,10 +70,10 @@ graph TD
     PG["Postgres<br/>(own EBS volume)"]
 
     CF -- "default (*)" --> S3
-    CF -- "/api/navigation/*" --> NAV
-    CF -- "/api/agent/*" --> AGENT
-    CF -- "/api/fleet/*" --> FLEET
-    CF -- "/api/automation/*" --> AUTOMATION
+    CF -- "/api/navigation/v1/*" --> NAV
+    CF -- "/api/agent/v1/*" --> AGENT
+    CF -- "/api/fleet/v1/*" --> FLEET
+    CF -- "/api/automation/v1/*" --> AUTOMATION
     AGENT --> MYSQL
     AUTOMATION --> PG
     NAV -.->|"ST_GATEWAY_URL=localhost:3002"| GATEWAY
