@@ -8,11 +8,15 @@ Cross-cutting issues that don't belong to a single service also live here.
 
 ## Documentation
 
+Start with [the decision model on one page](docs/algorithms.md#the-decision-model-on-one-page)
+— it's the shortest path to understanding what this thing actually does.
+
+- **[Algorithms](docs/algorithms.md)** — how the autopilot thinks: the scoring
+  model and a worked example, where its numbers come from, what it deliberately
+  doesn't capture, the work loops, anomaly detection, replay, the AI
+  supervisor, the rate-limit gateway
 - **[Architecture](docs/architecture.md)** — system map, the services and
-  their boundaries, key design decisions, status and roadmap
-- **[Algorithms](docs/algorithms.md)** — how the autopilot thinks: planner
-  scoring, routing, the mining/contract/scouting loops, anomaly detection,
-  the AI supervisor, the rate-limit gateway
+  their boundaries, why there are eight of them, key design decisions, status
 - **[Operations](docs/operations.md)** — running locally, production
   deployment, CI, testing philosophy
 - **[Original design records](docs/design/)** — the frozen pre-implementation
