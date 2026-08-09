@@ -367,6 +367,22 @@ token bucket (default ~2 requests/second). Two FIFO queues share the budget:
 interactive always drained first — the dashboard stays responsive while the
 autopilot saturates the rest.
 
+Classification rides on a single request header, `X-Priority: interactive`.
+command-interface stamps it on every call; agent/navigation/fleet-service
+forward it as-is; st-gateway reads it and anything else — including a missing
+header — falls back to `background`, so nothing jumps the queue by accident.
+
+That header has to survive every hop, and there are two ways to break it
+silently. A service that does not forward it downgrades that call to background
+without any error. And because `X-Priority` is not a
+[CORS-safelisted request header](https://developer.mozilla.org/en-US/docs/Glossary/CORS-safelisted_request_header),
+the browser preflights it: any service the dashboard calls directly must list
+it in `Access-Control-Allow-Headers` or the browser blocks the request outright.
+Getting that wrong is not a degradation, it is a hard failure — and it only
+shows up locally, because in production CloudFront fronts these origins rather
+than the browser calling them cross-origin. **Any new backend the dashboard
+talks to must both forward `X-Priority` and allow it through CORS.**
+
 Retries are centralised and deliberately asymmetric: a 429 is always safe to
 retry, because a rate-limited request never executed upstream. A 5xx or network
 failure is retried only for side-effect-free methods — a POST that may already

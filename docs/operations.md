@@ -45,6 +45,29 @@ Starts:
 The frontend runs separately: `npm run dev` in `command-interface/` serves
 http://localhost:3000, pinned to match the backends' default CORS origin.
 
+Two failure modes here look identical from the browser — a bare
+`Failed to fetch` on login, with health checks still green, because health
+checks are unauthenticated and skip both problems:
+
+- **A backend not allowing `X-Priority` through CORS.** The dashboard sends
+  `X-Priority: interactive` on every call for the gateway's priority queue (see
+  [algorithms.md](algorithms.md#the-gateway-token-bucket-and-priority-queue));
+  the browser preflights it, and a service that doesn't list it in
+  `Access-Control-Allow-Headers` gets every authenticated request blocked.
+  Confirm with:
+  ```
+  curl -X OPTIONS http://localhost:8080/api/agent/v1/agent \
+    -H 'Origin: http://localhost:3000' \
+    -H 'Access-Control-Request-Method: GET' \
+    -H 'Access-Control-Request-Headers: x-priority' -D -
+  ```
+  The response must echo `X-Priority` in `Access-Control-Allow-Headers`.
+- **A stale `command-interface/.env.local`.** It's gitignored, so it doesn't
+  follow changes to the service base paths. Every `VITE_*_SERVICE_URL` must
+  include the versioned prefix (`http://localhost:8080/api/agent/v1`, not
+  `http://localhost:8080`). Compare against `.env.example`, or just delete the
+  file — the defaults already match this compose setup.
+
 Each backend exposes its own Swagger UI:
 
 - navigation-service: http://localhost:8081/swagger-ui.html
