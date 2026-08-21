@@ -1,6 +1,7 @@
 # Authentication — Design Decisions
 
-*Outcome of a design interview, 2026-08-19. Status: agreed direction, pre-implementation.*
+*Outcome of a design interview, 2026-08-19. Status: increment 1 shipped 2026-08-21
+(see [Increment 1 — shipped](#increment-1--shipped) below); increments 2–4 pending.*
 
 This document covers **two independent applications** that adopt the same vendor
 for different reasons: this project (`spacetraders`) and `mradomsky/stagehopper`.
@@ -65,6 +66,60 @@ game token never enters the browser.
   server-side in the Lambda with `google-auth-library`, admin gated on an
   `ADMIN_EMAILS` allowlist plus `email_verified === true`. It works and has no
   known gap. Its migration is a simplification, not a fix.
+
+## Increment 1 — shipped
+
+Closed the live hole (build order step 1): automation-service's mutating
+routes verify a Clerk session and require `fleet:control` or `agent:reset`
+([automation-service#10](https://github.com/V-M-Pioneer-Trading/automation-service/pull/10)),
+command-interface has a real headless Google sign-in
+([command-interface#17](https://github.com/V-M-Pioneer-Trading/command-interface/pull/17)),
+and the spacetraders Clerk instance is live: Google-only, `restricted`
+sign-up, one operator.
+
+**Not done, and load-bearing for increment 2**: decision 13's shell inversion.
+`App.jsx` still gates the entire dashboard on the pasted SpaceTraders token —
+`token ? <Dashboard /> : <LoginScreen />` — so an anonymous visitor never
+reaches the dashboard at all. Decision 2's "every `GET` is public" is
+therefore not actually true yet; there is no public visitor to serve it to.
+Gating nav/agent/fleet-service on Clerk (build order step 2) does not by
+itself deliver decision 2's goal while this gate stands in front of it —
+finishing the inversion is part of what "increment 2" has to mean, not a
+separate, later task.
+
+**New artifact this design doc predates**: [`mradomsky/clerk-config`](https://github.com/mradomsky/clerk-config),
+configuration-as-code for both Clerk tenants — instance settings and JWT
+templates applied from a workstation, never CI, for the same reason
+`infrastructure`'s `bootstrap/` isn't automated either (see its
+`docs/security-model.md`). Decisions 1, 10 and 12 describe *what* the
+spacetraders tenant looks like; `clerk-config`'s `apps/spacetraders/dev.json`
+is now the authoritative, reviewable record of that configuration, not this
+document.
+
+**Two implementation lessons worth recording, both from bootstrapping the
+first real operator account**:
+
+- **The allowlist does not admit anyone under `restricted` mode — only
+  `public`.** Per Clerk's own docs, allowlist membership is irrelevant once
+  sign-up is restricted; only an existing user or an invitation gets in. A
+  first version of `clerk-config`'s apply-safety guard treated allowlist
+  membership as sufficient, which nearly locked the operator out of a
+  zero-user instance — the guard passed, the apply "succeeded", and Clerk
+  silently declined to turn `allowlist_enabled` on in the same call. Full
+  writeup: [clerk-config#3](https://github.com/mradomsky/clerk-config/issues/3).
+  Bootstrapping a restricted, OAuth-only, zero-user instance requires a
+  temporary `public` → real sign-in → `restricted` sequence; there is no way
+  to admin-create the first user directly when the instance has no
+  identifier (e.g. email) enabled other than OAuth.
+- **A headless `authenticateWithRedirect` sign-in does not create an account
+  for a brand-new OAuth identity.** `useSignIn()` alone can only find an
+  *existing* user; for a new one, Clerk marks the attempt `transferable`
+  rather than erroring, and the app must explicitly call
+  `signUp.create({ transfer: true })` to complete it. Decision 12's "headless"
+  choice didn't originally account for this — the first version of
+  `OperatorBadge` only ever called sign-in, so a first-time sign-in silently
+  bounced back to the login screen with no session and no error. Fixed in
+  [command-interface#20](https://github.com/V-M-Pioneer-Trading/command-interface/pull/20).
 
 ## Decisions
 
@@ -486,6 +541,10 @@ Clerk's is on screen.
 
 ### 13. The app shell inverts: there is no login wall
 
+*Status: **not yet done**. See [Increment 1 — shipped](#increment-1--shipped) —
+`App.jsx` still gates the dashboard on the pasted SpaceTraders token. This is
+now part of increment 2's scope, not a separate later task.*
+
 `LoginScreen.jsx` is currently the front door — no token, no dashboard. It is
 removed. The dashboard always renders, sign-in becomes a small operator
 affordance in the chrome, and gated controls — arm, pause, abort, knob edits,
@@ -625,16 +684,22 @@ injection ships before Clerk verification lands on those three, they are open to
 the internet with a valid token behind them** — a worse hole than the one being
 fixed.
 
-1. **Close the live hole.** Clerk tenant (sign-up **restricted**, Google-only,
-   session token customised to emit `scope` from `public_metadata`), verification
-   in automation-service, its mutating routes
-   gated, the shell inversion, and `VITE_CLERK_PUBLISHABLE_KEY` injected at build
-   time in command-interface's workflow — a publishable key is public, so this is
-   configuration rather than secret handling. Nothing else here is urgent; this
-   is.
+1. **Close the live hole.** ✅ Shipped 2026-08-21 — Clerk tenant (sign-up
+   **restricted**, Google-only, session token customised to emit `scope` from
+   `public_metadata`), verification in automation-service, its mutating routes
+   gated, and `VITE_CLERK_PUBLISHABLE_KEY` injected at build time in
+   command-interface's workflow — a publishable key is public, so this is
+   configuration rather than secret handling. See
+   [Increment 1 — shipped](#increment-1--shipped) for what landed and what
+   didn't: **the shell inversion did not ship with this step** and carries
+   into step 2 below.
 2. **Gate the other three, and open the map.** Verification in
    navigation-service, agent-service and fleet-service; navigation's cache-only
-   anonymous waypoints. Deliberately *before* injection, so these services are
+   anonymous waypoints; **and the shell inversion carried over from step 1** —
+   `App.jsx` no longer gating the dashboard on the pasted token. All three
+   matter together: gating the backend services on Clerk doesn't make the
+   dashboard actually public while the frontend still walls it off first.
+   Deliberately *before* injection, so these services are
    never ungated for a single deploy.
 3. **auth-service and injection.** st-gateway injecting and skipping `GET /`,
    pass-through deleted from four services, **priority derived from the verified
