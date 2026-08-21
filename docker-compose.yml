@@ -115,6 +115,16 @@ services:
       MINING_SHIP_SYMBOL: ${MINING_SHIP_SYMBOL:-}
       ANOMALY_WEBHOOK_URL: http://ai-service:3004/webhooks/anomaly
       CORS_ALLOWED_ORIGIN: http://localhost:3000
+      # Local trust anchor: the committed development keypair (see
+      # dev-keys/README.md), bind-mounted below so a fresh clone runs the real
+      # verification path with no Clerk account. To drive the actual UI, set
+      # CLERK_JWT_KEY in .env to a Clerk dev instance's public key — an inline
+      # value wins over the file. There is no "auth off" mode.
+      CLERK_JWT_KEY_FILE: /run/dev-keys/dev-only-do-not-use.pub.pem
+      CLERK_JWT_KEY: ${CLERK_JWT_KEY:-}
+      AI_SERVICE_SECRET: ${AI_SERVICE_SECRET:-local-dev-service-secret}
+    volumes:
+      - ./dev-keys:/run/dev-keys:ro
     depends_on:
       automation-postgres:
         condition: service_healthy

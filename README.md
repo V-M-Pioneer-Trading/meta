@@ -20,7 +20,9 @@ Start with [the decision model on one page](docs/algorithms.md#the-decision-mode
 - **[Operations](docs/operations.md)** — running locally, production
   deployment, CI, testing philosophy
 - **[Original design records](docs/design/)** — the frozen pre-implementation
-  autopilot design and spec
+  autopilot design and spec, and the
+  [authentication design](docs/design/auth-design.md) covering Clerk identity
+  and the credential-owning auth-service
 
 ## Services
 
