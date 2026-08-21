@@ -146,6 +146,9 @@ with their scoring inputs, metrics, knob values, autopilot status, per-ship task
 state — *and* the live reads: agent profile, ships, contracts, market and
 shipyard data. There is exactly one operator.
 
+*Status: agent-service's live reads (agent profile, ships, contracts) do not
+go public with increment 2 — see decision 18. Everything else here does.*
+
 The event log is deliberately included despite carrying credit balances and
 contract terms. It is the most interesting artifact the system produces, and a
 reviewer should be able to watch the fleet without asking for credentials.
@@ -639,6 +642,44 @@ app for friends and a closed instance breaks the product. The prebuilt `<SignIn/
 component is used here — multiple methods, sign-up and password reset are flows
 worth not hand-rolling — and the *"Secured by Clerk"* badge is accepted.
 
+### 18. Increment 2's transition window: a second header, and a narrower promise
+
+Discovered only once increment 2's implementation was surveyed, not anticipated
+when decisions 2–3 were written: **navigation-service, agent-service and
+fleet-service hold no SpaceTraders credential of their own.** All three are
+pure forwarders — whatever token arrives in `Authorization` is what reaches
+SpaceTraders. That stops being true only once auth-service and injection
+(build order step 3) exist. Build order step 2 happens first, which means for
+the span between the two, these services need **both** a Clerk identity (to
+gate on) **and** the SpaceTraders token (to keep making live calls) on the
+same request — and one `Authorization` header cannot carry both.
+
+**`Authorization` carries the Clerk JWT everywhere, matching automation-service
+already shipped. A new header, `X-SpaceTraders-Token`, carries the game token**
+for any route that still needs to make a live upstream call during this
+window. command-interface's API clients send both. The header disappears
+entirely once decision 5's injection lands — st-gateway starts injecting the
+token itself and nothing downstream needs to receive it from a caller again.
+
+**Decision 3's promise of anonymous *live* reads on agent-service does not
+ship with increment 2.** An anonymous visitor has no SpaceTraders token to put
+in `X-SpaceTraders-Token` either — agent-service would need a credential of
+its own to serve them, which is exactly the thing decision 6 centralises in
+auth-service and exactly the pattern this document elsewhere rejects (the
+`spacetraders-mcp-server` holding its own token outside auth-service, "Deferred,
+and tracked" section). Manufacturing a stopgap credential for agent-service now
+would duplicate what auth-service is about to do properly, one increment early.
+So: agent-service's `GET`s stay gated behind an authenticated Clerk session
+(any signed-in operator — no scope requirement, since these are reads and
+there is exactly one operator) until increment 3. Anonymous visitors get
+navigation-service's cache-only public map in increment 2, not agent/ship/
+contract data; the full decision-3 picture completes when auth-service ships.
+
+Rejected: **a stopgap `SPACETRADERS_TOKEN` env var on agent-service** for
+anonymous reads only, to ship decision 3 in full this increment. It is the
+same "fourth holder of the game token" this document already criticises
+elsewhere, just introduced deliberately instead of by accident.
+
 ## New repository: `auth-service`
 
 **Go, SQLite.** Go because this service's job is holding a credential, and a
@@ -694,13 +735,16 @@ fixed.
    didn't: **the shell inversion did not ship with this step** and carries
    into step 2 below.
 2. **Gate the other three, and open the map.** Verification in
-   navigation-service, agent-service and fleet-service; navigation's cache-only
-   anonymous waypoints; **and the shell inversion carried over from step 1** —
-   `App.jsx` no longer gating the dashboard on the pasted token. All three
-   matter together: gating the backend services on Clerk doesn't make the
-   dashboard actually public while the frontend still walls it off first.
-   Deliberately *before* injection, so these services are
-   never ungated for a single deploy.
+   navigation-service, agent-service and fleet-service, carrying the
+   SpaceTraders token in `X-SpaceTraders-Token` per decision 18 rather than
+   `Authorization`; navigation's cache-only anonymous waypoints; **and the
+   shell inversion carried over from step 1** — `App.jsx` no longer gating the
+   dashboard on the pasted token. All three matter together: gating the
+   backend services on Clerk doesn't make the dashboard actually public while
+   the frontend still walls it off first. Deliberately *before* injection, so
+   these services are never ungated for a single deploy. **Agent-service's
+   live reads stay behind an authenticated session** — decision 18 — until
+   step 3 gives it a credential to serve anonymous callers with.
 3. **auth-service and injection.** st-gateway injecting and skipping `GET /`,
    pass-through deleted from four services, **priority derived from the verified
    identity rather than `X-Priority`** (decision 2 — this is what makes public
