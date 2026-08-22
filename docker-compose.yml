@@ -76,6 +76,11 @@ services:
       ST_GATEWAY_URL: http://st-gateway:3002
       AGENT_SERVICE_URL: http://agent-service:80/api/agent/v1
       CORS_ALLOWED_ORIGIN: http://localhost:3000
+      # Same local trust anchor as automation-service — see its comment below.
+      CLERK_JWT_KEY_FILE: /run/dev-keys/dev-only-do-not-use.pub.pem
+      CLERK_JWT_KEY: ${CLERK_JWT_KEY:-}
+    volumes:
+      - ./dev-keys:/run/dev-keys:ro
     depends_on:
       - agent-service
       - st-gateway
