@@ -576,9 +576,9 @@ Clerk's is on screen.
 
 ### 13. The app shell inverts: there is no login wall
 
-*Status: **not yet done**. See [Increment 1 — shipped](#increment-1--shipped) —
-`App.jsx` still gates the dashboard on the pasted SpaceTraders token. This is
-now part of increment 2's scope, not a separate later task.*
+*Status: **shipped in increment 2**. See
+[Increment 2 — shipped](#increment-2--shipped) — `App.jsx` no longer gates
+the dashboard on the pasted SpaceTraders token.*
 
 `LoginScreen.jsx` is currently the front door — no token, no dashboard. It is
 removed. The dashboard always renders, sign-in becomes a small operator
