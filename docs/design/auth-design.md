@@ -1,7 +1,8 @@
 # Authentication — Design Decisions
 
-*Outcome of a design interview, 2026-08-19. Status: increment 1 shipped 2026-08-21
-(see [Increment 1 — shipped](#increment-1--shipped) below); increments 2–4 pending.*
+*Outcome of a design interview, 2026-08-19. Status: increment 1 shipped 2026-08-21,
+increment 2 shipped 2026-08-22 (see [Increment 1 — shipped](#increment-1--shipped)
+and [Increment 2 — shipped](#increment-2--shipped) below); increments 3–4 pending.*
 
 This document covers **two independent applications** that adopt the same vendor
 for different reasons: this project (`spacetraders`) and `mradomsky/stagehopper`.
@@ -120,6 +121,37 @@ first real operator account**:
   `OperatorBadge` only ever called sign-in, so a first-time sign-in silently
   bounced back to the login screen with no session and no error. Fixed in
   [command-interface#20](https://github.com/V-M-Pioneer-Trading/command-interface/pull/20).
+
+## Increment 2 — shipped
+
+Gated navigation-service, agent-service and fleet-service on Clerk per decision
+18's two-header scheme, opened navigation's cache-only map to anonymous
+visitors, and finished decision 13's shell inversion — command-interface's
+`App.jsx` no longer gates the dashboard behind the pasted SpaceTraders token.
+Four coordinated PRs, merged and deployed together since all four reject the
+old single-header shape on the same production host:
+[fleet-service#15](https://github.com/V-M-Pioneer-Trading/fleet-service/pull/15),
+[agent-service#15](https://github.com/V-M-Pioneer-Trading/agent-service/pull/15),
+[navigation-service#13](https://github.com/V-M-Pioneer-Trading/navigation-service/pull/13),
+[command-interface#21](https://github.com/V-M-Pioneer-Trading/command-interface/pull/21).
+
+**One implementation lesson, found post-deploy**: application code shipping a
+new required env var is not the same as production having it. All three
+Node/Go services fail closed without `CLERK_JWT_KEY` — correct, by design (see
+decision 18 and automation-service's `config.ts`) — but the Terraform in
+`V-M-Pioneer-Trading/infrastructure` that generates each service's SSM
+bootstrap script was never updated to provision it. automation-service (from
+increment 1) had in fact been crash-looping in production, undetected, since
+its own deploy the day before; today's increment-2 merge added the identical
+gap to fleet-service and agent-service, taking all three down at once.
+Fixed in [infrastructure#44](https://github.com/V-M-Pioneer-Trading/infrastructure/pull/44)
+(also closed a second, unrelated gap of the same shape: automation-service's
+`AI_SERVICE_SECRET` was never provisioned either). **The lesson generalizes**:
+a service repo's own CI going green, and even that service's own tests
+passing, says nothing about whether the *separate* infrastructure repo that
+provisions its production environment has kept up — a "shipped" increment
+that adds a required env var needs its production deploy actually checked
+(health endpoint, not just CI status), not just its build pipeline.
 
 ## Decisions
 
@@ -734,17 +766,19 @@ fixed.
    [Increment 1 — shipped](#increment-1--shipped) for what landed and what
    didn't: **the shell inversion did not ship with this step** and carries
    into step 2 below.
-2. **Gate the other three, and open the map.** Verification in
-   navigation-service, agent-service and fleet-service, carrying the
-   SpaceTraders token in `X-SpaceTraders-Token` per decision 18 rather than
-   `Authorization`; navigation's cache-only anonymous waypoints; **and the
-   shell inversion carried over from step 1** — `App.jsx` no longer gating the
-   dashboard on the pasted token. All three matter together: gating the
-   backend services on Clerk doesn't make the dashboard actually public while
-   the frontend still walls it off first. Deliberately *before* injection, so
-   these services are never ungated for a single deploy. **Agent-service's
-   live reads stay behind an authenticated session** — decision 18 — until
-   step 3 gives it a credential to serve anonymous callers with.
+2. **Gate the other three, and open the map.** ✅ Shipped 2026-08-22 —
+   verification in navigation-service, agent-service and fleet-service,
+   carrying the SpaceTraders token in `X-SpaceTraders-Token` per decision 18
+   rather than `Authorization`; navigation's cache-only anonymous waypoints;
+   **and the shell inversion carried over from step 1** — `App.jsx` no longer
+   gating the dashboard on the pasted token. All three matter together:
+   gating the backend services on Clerk doesn't make the dashboard actually
+   public while the frontend still walls it off first. Deliberately *before*
+   injection, so these services are never ungated for a single deploy.
+   **Agent-service's live reads stay behind an authenticated session** —
+   decision 18 — until step 3 gives it a credential to serve anonymous
+   callers with. See [Increment 2 — shipped](#increment-2--shipped) for what
+   landed and the production-outage lesson from it.
 3. **auth-service and injection.** st-gateway injecting and skipping `GET /`,
    pass-through deleted from four services, **priority derived from the verified
    identity rather than `X-Priority`** (decision 2 — this is what makes public
