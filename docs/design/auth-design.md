@@ -160,8 +160,7 @@ them), and decision 18's dual-header scheme never accounted for that caller
 having no human Clerk session to present. Every one of those calls has
 401'd since this deploy. See
 [decision 19](#19-automation-service-authenticates-its-own-agentfleet-service-calls-with-a-clerk-m2m-token)
-for the fix (Clerk M2M tokens) — not yet implemented; automation-service's
-autonomous loop stays down until it ships.
+for the fix (Clerk M2M tokens) — shipped 2026-08-22.
 
 ## Decisions
 
@@ -797,9 +796,14 @@ the same mechanism replaces ai-service's shared secret from decision 11 — one
 Clerk Machine per machine caller, not a bespoke shared-secret scheme
 per caller.
 
-*Status: **not yet implemented**. automation-service's autonomous loop is
-currently down in production; accepted to stay down until this ships,
-since nothing is graded and idle ships cost nothing but time.*
+*Status: **shipped 2026-08-22** —
+[automation-service#12](https://github.com/V-M-Pioneer-Trading/automation-service/pull/12),
+[infrastructure#45](https://github.com/V-M-Pioneer-Trading/infrastructure/pull/45).
+A dedicated Clerk Machine (`automation-service`) mints the token; the
+throwaway test machine used to validate the design was deleted, and the
+real machine's secret key was rotated once after production provisioning
+to close the exposure window from having passed through a terminal during
+setup.*
 
 ## New repository: `auth-service`
 
