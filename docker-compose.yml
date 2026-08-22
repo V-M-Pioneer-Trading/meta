@@ -44,6 +44,11 @@ services:
       MYSQL_DATABASE: vnm-agent-db
       CORS_ALLOWED_ORIGIN: http://localhost:3000
       ST_GATEWAY_URL: http://st-gateway:3002
+      # Same local trust anchor as automation-service — see its comment below.
+      CLERK_JWT_KEY_FILE: /run/dev-keys/dev-only-do-not-use.pub.pem
+      CLERK_JWT_KEY: ${CLERK_JWT_KEY:-}
+    volumes:
+      - ./dev-keys:/run/dev-keys:ro
     depends_on:
       mysql:
         condition: service_healthy
