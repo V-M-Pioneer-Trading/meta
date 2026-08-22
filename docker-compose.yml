@@ -133,6 +133,13 @@ services:
       CLERK_JWT_KEY_FILE: /run/dev-keys/dev-only-do-not-use.pub.pem
       CLERK_JWT_KEY: ${CLERK_JWT_KEY:-}
       AI_SERVICE_SECRET: ${AI_SERVICE_SECRET:-local-dev-service-secret}
+      # auth-design.md decision 19: this service is itself a caller of
+      # agent/fleet-service, so it also needs to *sign* something, not just
+      # verify — the private half of the same dev keypair, gated the same
+      # way (inline CLERK_M2M_SECRET_KEY wins over the file, for pointing at
+      # a real Clerk Machine without editing this file).
+      DEV_M2M_SIGNING_KEY_FILE: /run/dev-keys/dev-only-do-not-use.key.pem
+      CLERK_M2M_SECRET_KEY: ${CLERK_M2M_SECRET_KEY:-}
     volumes:
       - ./dev-keys:/run/dev-keys:ro
     depends_on:
