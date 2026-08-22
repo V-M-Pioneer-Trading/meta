@@ -153,6 +153,16 @@ provisions its production environment has kept up — a "shipped" increment
 that adds a required env var needs its production deploy actually checked
 (health endpoint, not just CI status), not just its build pipeline.
 
+**A second, unrelated gap surfaced the same way — via a live health check,
+not by inspection**: automation-service is itself a caller of agent-service
+and fleet-service (its background scheduler drives every ship action through
+them), and decision 18's dual-header scheme never accounted for that caller
+having no human Clerk session to present. Every one of those calls has
+401'd since this deploy. See
+[decision 19](#19-automation-service-authenticates-its-own-agentfleet-service-calls-with-a-clerk-m2m-token)
+for the fix (Clerk M2M tokens) — not yet implemented; automation-service's
+autonomous loop stays down until it ships.
+
 ## Decisions
 
 ### 1. Two Clerk applications, not one, and not three
@@ -563,6 +573,12 @@ an internal hop through an external vendor contradicts the standing rule that th
 deterministic core survives third-party outages. Tracked in
 [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59).
 
+*Status: no longer just "in principle" — validated with a real test token on
+2026-08-22, and needed sooner than this route anyway. See
+[decision 19](#19-automation-service-authenticates-its-own-agentfleet-service-calls-with-a-clerk-m2m-token),
+which automation-service's own broken calls to agent/fleet-service now force
+first; this route can adopt the same mechanism once 19 ships.*
+
 ### 12. spacetraders sign-in: restricted, Google-only, headless
 
 Sign-up is set to **restricted** — there is one legitimate operator, so a public
@@ -712,6 +728,79 @@ anonymous reads only, to ship decision 3 in full this increment. It is the
 same "fourth holder of the game token" this document already criticises
 elsewhere, just introduced deliberately instead of by accident.
 
+### 19. automation-service authenticates its own agent/fleet-service calls with a Clerk M2M token
+
+Found in production the day increment 2 shipped, not anticipated by decision
+18: **automation-service is itself a caller of agent-service and
+fleet-service**, not just command-interface. Its background scheduler
+(`scheduler.ts`) drives every ship action — dock, orbit, navigate, survey,
+extract, sell, purchase, deliver, plus the reads that feed them — through
+`gameClients.ts`, which forwards the raw SpaceTraders game token as
+`Authorization: Bearer <token>`. Decision 18's dual-header scheme was designed
+around command-interface: a browser with a live human's Clerk session,
+forwarding both the Clerk JWT and the pasted game token. automation-service
+has no browser and no human session to draw one from, so every one of these
+calls has 401'd ("invalid or expired session") since increment 2 shipped —
+the entire autonomous mining/contract loop has been down since, discovered via
+`mining_tick_error` / `contract_discovery_error` in the event log.
+
+**This is not fixed by increment 3.** auth-service and injection remove the
+need for any caller to *carry* the game token; they do nothing to decision
+2's separate, standing invariant that every mutating route requires a
+verified Clerk scope. A headless background process can never hold a human
+Clerk session, injection or not — so whatever authorizes automation-service's
+own calls has to be a distinct mechanism, independent of when or whether
+auth-service ships.
+
+**Chosen fix: a Clerk M2M token**, JWT format — the same mechanism decision
+11 already named as "a better fit in principle" for ai-service's shared
+secret, deferred at the time only because JWT format didn't exist yet.
+Validated with a real (throwaway, deleted after) test machine on the
+spacetraders dev instance on 2026-08-22, not just read from docs:
+
+- A Clerk "Machine" is created for automation-service, with `claims: {scope:
+  "fleet:control agent:reset"}` baked in at token-mint time.
+- The minted JWT is signed with the **exact same RS256 key** already deployed
+  as `CLERK_JWT_KEY` — confirmed by decoding the token's `kid` (matches the
+  instance JWKS) and by verifying its signature directly against the
+  production PEM. Its `iss` matches the already-configured `CLERK_ISSUER`.
+  Its `scope` claim is a flat top-level string, space-delimited — exactly the
+  shape `requireScope()` already parses in automation-service, agent-service
+  and fleet-service alike.
+- **Zero verification-side code changes are needed anywhere.** The existing
+  `requireScope`/`requireSession` middleware (Go and TS) cannot tell this
+  token apart from a human session token except by `sub` (`mch_...` instead
+  of a Clerk user id) — which nothing currently checks, and which stays
+  available for audit if it's ever needed.
+- automation-service mints the token once and **caches it in memory**,
+  refreshing well before its default one-hour expiry (e.g. at 50% TTL
+  elapsed) rather than per tick — the scheduler ticks far more often than the
+  Hobby-tier's 2,500 creations/month would tolerate, and a wide refresh
+  margin means a transient Clerk API outage during a refresh attempt doesn't
+  break anything until the cached token actually goes stale. This is also
+  the answer to decision 11's "routing an internal hop through an external
+  vendor" concern: minting is an infrequent background refresh, not a
+  per-request dependency — verification stays fully networkless.
+- `gameClients.ts` changes to send this M2M JWT via `Authorization` and the
+  raw SpaceTraders game token via `X-SpaceTraders-Token` — completing
+  decision 18's dual-header scheme for automation-service's own outbound
+  calls, not only command-interface's.
+- The Machine Secret Key is a new secret, provisioned the same
+  SSM-parameter way as `CLERK_JWT_KEY` and `AI_SERVICE_SECRET` — called out
+  explicitly because of the lesson from [Increment 2 — shipped](#increment-2--shipped):
+  this needs the Terraform in `V-M-Pioneer-Trading/infrastructure` updated
+  too, and the live deploy actually checked, not just the application code
+  merged.
+
+**Also resolves [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59)**:
+the same mechanism replaces ai-service's shared secret from decision 11 — one
+Clerk Machine per machine caller, not a bespoke shared-secret scheme
+per caller.
+
+*Status: **not yet implemented**. automation-service's autonomous loop is
+currently down in production; accepted to stay down until this ships,
+since nothing is graded and idle ships cost nothing but time.*
+
 ## New repository: `auth-service`
 
 **Go, SQLite.** Go because this service's job is holding a credential, and a
@@ -806,7 +895,9 @@ no shared code — and can land at any point.
   whole host off `--network host` onto user-defined bridges, converging
   production with `docker compose`, which already uses service-name DNS.
 - [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59) — replace the
-  ai-service shared secret with Clerk M2M tokens.
+  ai-service shared secret with Clerk M2M tokens. Superseded in priority by
+  [decision 19](#19-automation-service-authenticates-its-own-agentfleet-service-calls-with-a-clerk-m2m-token),
+  which needs the same mechanism sooner, for automation-service itself.
 - **Per-container IAM.** Every container reads the shared EC2 instance profile
   through IMDS, so SSM parameters are effectively host-wide. Fixing this properly
   needs ECS task roles or EKS IRSA — a different hosting model, not a
