@@ -89,31 +89,58 @@ graph TD
     FLEET["fleet-service<br/>:3001"]
     AUTOMATION["automation-service<br/>:3003"]
     GATEWAY["st-gateway<br/>:3002 (no CloudFront origin)"]
+    AUTH["auth-service<br/>:3005 (publishes no host port)"]
+    CADDY["Caddy<br/>:443 — sole public ingress"]
     MYSQL["MySQL<br/>(own EBS volume)"]
     PG["Postgres<br/>(own EBS volume)"]
 
     CF -- "default (*)" --> S3
-    CF -- "/api/navigation/v1/*" --> NAV
-    CF -- "/api/agent/v1/*" --> AGENT
-    CF -- "/api/fleet/v1/*" --> FLEET
-    CF -- "/api/automation/v1/*" --> AUTOMATION
+    CF -- "/api/*" --> CADDY
+    CADDY -- "host.docker.internal:8080" --> NAV
+    CADDY -- "host.docker.internal:80" --> AGENT
+    CADDY -- "host.docker.internal:3001" --> FLEET
+    CADDY -- "host.docker.internal:3003" --> AUTOMATION
+    CADDY -- "bridge DNS" --> GATEWAY
+    CADDY -- "bridge DNS<br/>status/agent-token/register only" --> AUTH
     AGENT --> MYSQL
     AUTOMATION --> PG
     NAV -.->|"ST_GATEWAY_URL=localhost:3002"| GATEWAY
     AGENT -.->|"ST_GATEWAY_URL=localhost:3002"| GATEWAY
     FLEET -.->|"ST_GATEWAY_URL=localhost:3002"| GATEWAY
     AUTOMATION -.->|"ST_GATEWAY_URL=localhost:3002"| GATEWAY
+    AUTH -.->|"agent token fetch"| GATEWAY
 
-    subgraph EC2["shared EC2 host (--network host, SG scoped to CloudFront IPs)"]
-        NAV
-        AGENT
-        FLEET
-        AUTOMATION
-        GATEWAY
-        MYSQL
-        PG
+    subgraph EC2["shared EC2 host (SG scoped to CloudFront IPs)"]
+        subgraph HOSTNET["--network host"]
+            NAV
+            AGENT
+            FLEET
+            AUTOMATION
+            MYSQL
+            PG
+        end
+        subgraph AUTHNET["authnet bridge 172.28.0.0/24"]
+            CADDY
+            GATEWAY
+            AUTH
+        end
     end
 ```
+
+**Two network modes, not one.** Four services plus both databases still run
+`--network host`; Caddy, st-gateway and auth-service sit on the private
+`authnet` bridge (auth-design decision 9). The seam between them is deliberate
+and asymmetric:
+
+- st-gateway publishes `-p 127.0.0.1:3002:3002`, so the four host-network
+  services reach it at the same `localhost:3002` they always used — no change
+  was needed in any of them.
+- Caddy, being on the bridge, cannot use `localhost` to reach the four
+  host-network services — inside a bridged container that means the container
+  itself. It uses `host.docker.internal` (via `--add-host
+  host.docker.internal:host-gateway`) for those, and ordinary bridge DNS for
+  its two `authnet` peers.
+- auth-service publishes nothing and is firewalled to `authnet` sources only.
 
 ai-service is **not deployed anywhere** — see the "Deployment gaps" note
 below.
@@ -146,9 +173,10 @@ below.
 - **st-gateway has no CloudFront origin** — internal-only by design, it's
   only ever called server-to-server (every other backend's
   `ST_GATEWAY_URL=http://localhost:3002`) as "the only door to SpaceTraders."
-  It is reachable from the browser in production today, though: its port
+  It was browser-reachable in production until the `authnet` move: its port
   falls inside the shared 80–8080 security-group range, so nothing at the
-  network layer blocks it — CloudFront simply has no route configured for it.
+  network layer blocked it. It now publishes on `127.0.0.1` only, so the
+  security-group range no longer exposes it and the gap is closed.
 
 ### Deployment gaps
 

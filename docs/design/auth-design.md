@@ -515,9 +515,29 @@ unenforceable.
   `/auth/v1/token` has **no Caddy route at any method**.
 - **A shared secret** on auth-service, same pattern and same storage as
   `X-Origin-Verify`. The bridge is a boundary, not an authenticator.
-- **A `DOCKER-USER` iptables rule** blocking host-namespace routing to the
-  `authnet` subnet. A bridge alone does not isolate from `--network host`
-  containers, which can still reach the subnet by IP.
+- **Two iptables chains**, both scoped to **auth-service's IP alone**
+  (`172.28.0.11`) — not to the `authnet` subnet. A bridge alone does not isolate
+  from `--network host` containers, which can still reach it by IP.
+  - `DOCKER-USER` covers forwarded traffic. This host has `br_netfilter`
+    enabled (Docker requires it for NAT and port publishing), so even
+    same-bridge container-to-container traffic transits this chain.
+  - `OUTPUT` covers what `DOCKER-USER` cannot see at all: a host process — or
+    equivalently any `--network host` container, since all four share the
+    host's netns — addressing a bridge IP directly never transits
+    `FORWARD`/`DOCKER-USER` on this kernel.
+  - Both chains must allow `ESTABLISHED,RELATED`, or replies to
+    already-permitted flows die.
+
+> **Scope these rules to auth-service's IP, never to the subnet.** This
+> paragraph originally specified a single subnet-wide `DOCKER-USER` rule. That
+> is the intuitive design and it is wrong, because the subnet also holds
+> st-gateway's DNAT'd published port and Caddy's public `:443`. Implemented as
+> written, it caused two production failures (2026-08-23): CloudFront could not
+> reach Caddy — all public ingress — and, more quietly, st-gateway lost DNS
+> entirely, so nothing could reach the SpaceTraders API while every `/health`
+> check still returned 200. Neither was visible from reading the rules; both
+> took packet-level tracing on the host to find. Adding one exception per
+> breakage does not converge — guard the one host that must be unreachable.
 
 Relying on the bridge alone was rejected for that last reason; relying on the
 shared secret alone was rejected because a secret in an environment variable of a
@@ -883,7 +903,8 @@ fixed.
    workflow, SSM bootstrap document, **a persistent volume for the SQLite file**
    (navigation-service sets the pattern), Caddy route block, CloudFront behaviour
    for `/api/auth/v1/*` plus a short TTL on the public GETs, the `authnet`
-   bridge, the `DOCKER-USER` rule, and the shared secret created out of band with
+   bridge, the two iptables chains (decision 9 — read the scoping warning there
+   before touching them), and the shared secret created out of band with
    `aws ssm put-parameter`.
 4. **Documentation.** Split the *"No service stores a token"* claim in
    `architecture.md` per decision 6; correct
