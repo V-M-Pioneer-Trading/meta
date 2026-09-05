@@ -115,18 +115,19 @@ The split follows the shape of the game itself:
 
 ## Key design decisions
 
-### No service stores a token
+### Exactly one service stores the game token
 
-There is no registration or login flow. The operator pastes an
-already-obtained SpaceTraders bearer token into the UI; it lives in the
-browser's `sessionStorage` and is forwarded as an `Authorization` header on
-every request, all the way upstream. No backend persists it.
+auth-service holds the SpaceTraders account and agent tokens (persisted, so the
+fleet recovers unattended across a universe reset), and st-gateway fetches the
+agent token from it and injects it on every upstream call. Nothing else —
+not the browser, not automation-service, not the three domain services — ever
+sees a game credential. Arming the autopilot is a statement of intent
+(`{ mode }`), not a hand-over of a token.
 
-The one nuance is autopilot: an unattended fleet needs a token while the
-operator is away, so arming the autopilot hands the token to
-automation-service — which holds it **in memory only**. Nothing token-shaped is
-ever written to a database, and a service restart always disarms. A dedicated
-auth-service that owns credentials properly is a known future step.
+What every other request carries instead is the operator's **Clerk session**,
+verified locally by each backend against a public key and forwarded to
+st-gateway, which derives queue priority from it. See
+[auth-design.md](design/auth-design.md), decisions 4–6.
 
 ### One gateway owns the rate budget
 
