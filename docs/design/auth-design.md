@@ -340,7 +340,13 @@ Rejected: **each service pulling and caching its own copy**, which puts four
 caches, four refresh implementations and four copies of the credential where one
 suffices.
 
-*Status: **shipped 2026-09-05** (increment 3 Stage 5). The `X-SpaceTraders-Token`
+*Status: **shipped 2026-09-05** (increment 3 Stage 5) —
+[agent-service#18](https://github.com/V-M-Pioneer-Trading/agent-service/pull/18),
+[fleet-service#17](https://github.com/V-M-Pioneer-Trading/fleet-service/pull/17),
+[automation-service#16](https://github.com/V-M-Pioneer-Trading/automation-service/pull/16),
+[auth-service#1](https://github.com/V-M-Pioneer-Trading/auth-service/pull/1),
+[st-gateway#7](https://github.com/V-M-Pioneer-Trading/st-gateway/pull/7),
+[command-interface#23](https://github.com/V-M-Pioneer-Trading/command-interface/pull/23). The `X-SpaceTraders-Token`
 header, `requireGameToken`, the `spaceTradersToken` parameter on every service and
 client method in four languages, and `AutopilotState.token` are deleted;
 `POST /autopilot/arm` is `{ mode }`. A stray header from a stale client is ignored,
@@ -869,9 +875,10 @@ needed — the limit would be the whole control. Left as-is until there is a
 caller that wants it.
 
 *Status: **shipped 2026-09-05** with navigation-service's Clerk verification
-(navigation-service branch `feat/clerk-guard-and-credential-seam`, meta branch
-`feat/universe-refresh-scope-and-nav-clerk`, infrastructure branch
-`feat/navigation-service-clerk-jwt-key`).
+—
+[navigation-service#15](https://github.com/V-M-Pioneer-Trading/navigation-service/pull/15),
+[meta#73](https://github.com/V-M-Pioneer-Trading/meta/pull/73),
+[infrastructure#63](https://github.com/V-M-Pioneer-Trading/infrastructure/pull/63).
 The Clerk dashboard step — adding `universe:refresh` to the operator's
 `public_metadata` scope — is manual and must be done before the first
 production refresh, which otherwise 403s: the correct fail-closed state.*
