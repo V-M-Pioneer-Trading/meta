@@ -26,7 +26,8 @@ trust anchor is for.
 node scripts/mint-dev-token.mjs
 ```
 
-Prints an `Authorization` header value good for one hour carrying both scopes.
+Prints an `Authorization` header value good for one hour carrying every scope the
+backends know (`fleet:control`, `agent:reset`, `universe:refresh`).
 No dependencies — it uses `node:crypto` only. To narrow it:
 
 ```bash
