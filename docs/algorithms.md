@@ -367,21 +367,19 @@ token bucket (default ~2 requests/second). Two FIFO queues share the budget:
 interactive always drained first — the dashboard stays responsive while the
 autopilot saturates the rest.
 
-Classification rides on a single request header, `X-Priority: interactive`.
-command-interface stamps it on every call; agent/navigation/fleet-service
-forward it as-is; st-gateway reads it and anything else — including a missing
-header — falls back to `background`, so nothing jumps the queue by accident.
+Classification is derived from a **verified identity**, never declared
+(auth-design.md decision 2). The caller's `Authorization` — a Clerk session —
+is forwarded verbatim by agent/navigation/fleet-service, and st-gateway checks
+its signature itself: a human session (`sub` starting `user_`) earns the
+interactive lane; a machine token (automation-service's M2M, `sub` `mch_…`),
+no token, or a token that fails verification all land in `background`. There
+is no `X-Priority` header any more — an earlier design let callers declare
+their class, which meant anything could promote itself by sending a string.
 
-That header has to survive every hop, and there are two ways to break it
-silently. A service that does not forward it downgrades that call to background
-without any error. And because `X-Priority` is not a
-[CORS-safelisted request header](https://developer.mozilla.org/en-US/docs/Glossary/CORS-safelisted_request_header),
-the browser preflights it: any service the dashboard calls directly must list
-it in `Access-Control-Allow-Headers` or the browser blocks the request outright.
-Getting that wrong is not a degradation, it is a hard failure — and it only
-shows up locally, because in production CloudFront fronts these origins rather
-than the browser calling them cross-origin. **Any new backend the dashboard
-talks to must both forward `X-Priority` and allow it through CORS.**
+The one way to break this silently is a backend that verifies the session and
+then does *not* forward it upstream: every call from it degrades to background
+with no error. **Any new backend that calls st-gateway must relay the inbound
+`Authorization` header unchanged.**
 
 Retries are centralised and deliberately asymmetric: a 429 is always safe to
 retry, because a rate-limited request never executed upstream. A 5xx or network

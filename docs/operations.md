@@ -49,19 +49,20 @@ Two failure modes here look identical from the browser — a bare
 `Failed to fetch` on login, with health checks still green, because health
 checks are unauthenticated and skip both problems:
 
-- **A backend not allowing `X-Priority` through CORS.** The dashboard sends
-  `X-Priority: interactive` on every call for the gateway's priority queue (see
-  [algorithms.md](algorithms.md#the-gateway-token-bucket-and-priority-queue));
-  the browser preflights it, and a service that doesn't list it in
+- **A backend not allowing `Authorization` through CORS.** The dashboard sends
+  the operator's Clerk session as `Authorization` on every call; the browser
+  preflights it, and a service that doesn't list it in
   `Access-Control-Allow-Headers` gets every authenticated request blocked.
   Confirm with:
   ```
   curl -X OPTIONS http://localhost:8080/api/agent/v1/agent \
     -H 'Origin: http://localhost:3000' \
     -H 'Access-Control-Request-Method: GET' \
-    -H 'Access-Control-Request-Headers: x-priority' -D -
+    -H 'Access-Control-Request-Headers: authorization' -D -
   ```
-  The response must echo `X-Priority` in `Access-Control-Allow-Headers`.
+  The response must echo `Authorization` in `Access-Control-Allow-Headers`.
+  (`X-Priority` and `X-SpaceTraders-Token` are gone — a backend still
+  allow-listing them is harmless, one requiring them is a bug.)
 - **A stale `command-interface/.env.local`.** It's gitignored, so it doesn't
   follow changes to the service base paths. Every `VITE_*_SERVICE_URL` must
   include the versioned prefix (`http://localhost:8080/api/agent/v1`, not

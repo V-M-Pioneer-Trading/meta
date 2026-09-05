@@ -65,8 +65,12 @@ services:
       SQLITE_DB_PATH: /data/nav.db
       CORS_ALLOWED_ORIGIN: http://localhost:3000
       ST_GATEWAY_URL: http://st-gateway:3002
+      # Same local trust anchor as every other service — see automation-service.
+      CLERK_JWT_KEY_FILE: /run/dev-keys/dev-only-do-not-use.pub.pem
+      CLERK_JWT_KEY: ${CLERK_JWT_KEY:-}
     volumes:
       - nav_data:/data
+      - ./dev-keys:/run/dev-keys:ro
     depends_on:
       - st-gateway
 
@@ -170,4 +174,5 @@ services:
 volumes:
   mysql_datavolume:
   nav_data:
+  auth_data:
   automation_postgres_data:

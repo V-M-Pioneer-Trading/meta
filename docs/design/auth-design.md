@@ -211,6 +211,10 @@ on the public GETs, the exposure is bounded rather than merely monitored.
 
 **Two scopes, split on reversibility.**
 
+*A third, `universe:refresh`, was added later — see decision 20; it is split on
+trust level rather than reversibility.*
+
+
 | Scope | Covers | Blast radius |
 |---|---|---|
 | `fleet:control` | arm, pause, abort, replan, knob writes | reversible |
@@ -335,6 +339,20 @@ and the READMEs describing both are deleted with it.
 Rejected: **each service pulling and caching its own copy**, which puts four
 caches, four refresh implementations and four copies of the credential where one
 suffices.
+
+*Status: **shipped 2026-09-05** (increment 3 Stage 5) —
+[agent-service#18](https://github.com/V-M-Pioneer-Trading/agent-service/pull/18),
+[fleet-service#17](https://github.com/V-M-Pioneer-Trading/fleet-service/pull/17),
+[automation-service#16](https://github.com/V-M-Pioneer-Trading/automation-service/pull/16),
+[auth-service#1](https://github.com/V-M-Pioneer-Trading/auth-service/pull/1),
+[st-gateway#7](https://github.com/V-M-Pioneer-Trading/st-gateway/pull/7),
+[command-interface#23](https://github.com/V-M-Pioneer-Trading/command-interface/pull/23). The `X-SpaceTraders-Token`
+header, `requireGameToken`, the `spaceTradersToken` parameter on every service and
+client method in four languages, and `AutopilotState.token` are deleted;
+`POST /autopilot/arm` is `{ mode }`. A stray header from a stale client is ignored,
+never rejected. The same pass deleted the dead `X-Priority` path end to end: the
+calling services now forward the verified Clerk session to st-gateway instead,
+which is what makes decision 2's priority derivation real.*
 
 ### 6. The account token is persisted, and the fleet recovers unattended
 
@@ -747,6 +765,9 @@ anonymous reads only, to ship decision 3 in full this increment. It is the
 same "fourth holder of the game token" this document already criticises
 elsewhere, just introduced deliberately instead of by accident.
 
+*Status: **closed 2026-09-05** — the transition window ended with Stage 5 (see
+decision 5's status). `X-SpaceTraders-Token` no longer exists anywhere.*
+
 ### 19. automation-service authenticates its own agent/fleet-service calls with a Clerk M2M token
 
 Found in production the day increment 2 shipped, not anticipated by decision
@@ -825,6 +846,43 @@ real machine's secret key was rotated once after production provisioning
 to close the exposure window from having passed through a terminal during
 setup.*
 
+### 20. `universe:refresh`: a third scope, for spending the rate budget without moving the fleet
+
+navigation-service's four `POST …/refresh` routes force a live re-walk of
+universe data on the fleet's credential and shared rate budget. Under decision
+2 they are mutating routes and need a verified scope; the question was which.
+
+**A new scope, `universe:refresh`, not `fleet:control`.** A refresh spends the
+rate budget but moves no ship and no credits — a lower-trust grant than
+driving the fleet, and one an analyst account could reasonably hold without
+being able to arm the autopilot. It is deliberately **not implied** by
+`fleet:control`: `requireScope` everywhere in the fleet means "carries this
+literal", and a superset rule would be a second place authorization lives.
+The operator account simply carries all three.
+
+Decision 2's "two scopes, split on reversibility" framing stays; this one is
+split on trust level. It is enforced (the objection to `dashboard:view` does
+not apply), lives in the operator's `public_metadata` like the other two, and
+is in the dev token minter's defaults.
+
+`GET` with `?forceRefresh=true` needs only a signed-in session, not the scope:
+it is a `GET` from an authenticated operator, and the scope guards the routes
+an anonymous-looking client would reach for.
+
+Considered and deferred: **allowing anonymous refreshes with a rate limit.** A
+visitor carries no token, so there would be no claim to check and no scope
+needed — the limit would be the whole control. Left as-is until there is a
+caller that wants it.
+
+*Status: **shipped 2026-09-05** with navigation-service's Clerk verification
+—
+[navigation-service#15](https://github.com/V-M-Pioneer-Trading/navigation-service/pull/15),
+[meta#73](https://github.com/V-M-Pioneer-Trading/meta/pull/73),
+[infrastructure#63](https://github.com/V-M-Pioneer-Trading/infrastructure/pull/63).
+The Clerk dashboard step — adding `universe:refresh` to the operator's
+`public_metadata` scope — is manual and must be done before the first
+production refresh, which otherwise 403s: the correct fail-closed state.*
+
 ## New repository: `auth-service`
 
 **Go, SQLite.** Go because this service's job is holding a credential, and a
@@ -879,8 +937,12 @@ fixed.
    [Increment 1 — shipped](#increment-1--shipped) for what landed and what
    didn't: **the shell inversion did not ship with this step** and carries
    into step 2 below.
-2. **Gate the other three, and open the map.** ✅ Shipped 2026-08-22 —
-   verification in navigation-service, agent-service and fleet-service,
+2. **Gate the other three, and open the map.** ✅ Shipped 2026-08-22 for
+   agent-service and fleet-service; **navigation-service was mis-marked** — it
+   received only the header move ([navigation-service#13](https://github.com/V-M-Pioneer-Trading/navigation-service/pull/13)),
+   never the JWT verification, and once injection landed its refresh routes were
+   open to any non-blank string. Closed 2026-09-05 with decision 20. As
+   originally written: verification in navigation-service, agent-service and fleet-service,
    carrying the SpaceTraders token in `X-SpaceTraders-Token` per decision 18
    rather than `Authorization`; navigation's cache-only anonymous waypoints;
    **and the shell inversion carried over from step 1** — `App.jsx` no longer
@@ -896,7 +958,9 @@ fixed.
    pass-through deleted from four services, **priority derived from the verified
    identity rather than `X-Priority`** (decision 2 — this is what makes public
    live reads safe, so it ships *with* injection, not after), and ai-service's
-   shared secret.
+   shared secret. ✅ Stages 1–4 shipped 2026-08-2x; **Stage 5 (pass-through
+   deletion, callers forwarding the Clerk session) shipped 2026-09-05** — see
+   decision 5's status.
 
    "The new service" is roughly ten discrete pieces, not one: GitHub repository,
    GHCR package, Terraform stack in `V-M-Pioneer-Trading/infrastructure`, CI
