@@ -139,6 +139,21 @@ SpaceTraders, and it owns a single token bucket, a two-class priority queue
 retry/backoff handling. See [algorithms.md](algorithms.md#the-gateway-token-bucket-and-priority-queue)
 for the mechanics.
 
+### Clients relay the gateway's verdict rather than re-deciding it
+
+The three services that call SpaceTraders do so through st-gateway, which has
+already decided what went wrong — it is the only one that talked to the game,
+and the only one that can see whether a credential exists. A client classifies
+exactly one condition, "the gateway did not answer me", and relays everything
+else with the gateway's own status, message and error code.
+
+They had drifted into three different answers for the same condition. The one
+that costs real information: navigation-service collapsed every upstream 5xx to
+a 502, discarding the body with it — including the one sentence that says a
+credential is missing and an operator must act rather than wait. The rule and
+its conformance fixtures are in
+[design/upstream-errors.md](design/upstream-errors.md).
+
 ### Deterministic core, AI on top
 
 The autopilot could have been "an LLM with tools driving ships". It
