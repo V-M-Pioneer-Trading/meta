@@ -10,6 +10,20 @@ services:
     environment:
       PORT: 3002
       SPACETRADERS_BASE_URL: https://api.spacetraders.io/v2
+      # decision 5: fetches the agent token to inject from auth-service
+      # instead of forwarding whatever a caller sends. Not a depends_on —
+      # st-gateway tolerates auth-service being briefly unreachable (503 on
+      # game calls, per decision 5), so there's no startup-ordering need, and
+      # auth-service itself calls back through st-gateway (GET / polling,
+      # decision 7) — a mutual depends_on would be an unresolvable cycle.
+      AUTH_SERVICE_URL: http://auth-service:80
+      AUTH_SERVICE_SHARED_SECRET: ${AUTH_SERVICE_SHARED_SECRET:-local-dev-auth-service-secret}
+      # decision 2: priority derived from a verified Clerk identity. Same
+      # local trust anchor as every other service — see their comments.
+      CLERK_JWT_KEY_FILE: /run/dev-keys/dev-only-do-not-use.pub.pem
+      CLERK_JWT_KEY: ${CLERK_JWT_KEY:-}
+    volumes:
+      - ./dev-keys:/run/dev-keys:ro
 
   mysql:
     container_name: vnm-agent-service-db
@@ -92,6 +106,29 @@ services:
       - ./dev-keys:/run/dev-keys:ro
     depends_on:
       - agent-service
+      - st-gateway
+
+  auth-service:
+    build:
+      context: ../auth-service
+      dockerfile: Dockerfile
+    ports:
+      - "8082:80"
+    environment:
+      SQLITE_DB_PATH: /data/auth.db
+      ST_GATEWAY_URL: http://st-gateway:3002
+      CORS_ALLOWED_ORIGIN: http://localhost:3000
+      # Same local trust anchor as the other services — see their comments.
+      CLERK_JWT_KEY_FILE: /run/dev-keys/dev-only-do-not-use.pub.pem
+      CLERK_JWT_KEY: ${CLERK_JWT_KEY:-}
+      # Gates GET /auth/v1/token (st-gateway's only way to fetch the agent
+      # token to inject). Local-only default; production has no fallback —
+      # see auth-design.md decision 9.
+      AUTH_SERVICE_SHARED_SECRET: ${AUTH_SERVICE_SHARED_SECRET:-local-dev-auth-service-secret}
+    volumes:
+      - ./dev-keys:/run/dev-keys:ro
+      - auth_data:/data
+    depends_on:
       - st-gateway
 
   automation-postgres:
