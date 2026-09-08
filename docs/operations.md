@@ -69,6 +69,30 @@ checks are unauthenticated and skip both problems:
   `http://localhost:8080`). Compare against `.env.example`, or just delete the
   file — the defaults already match this compose setup.
 
+One production-only trap that looks like neither: **CloudFront serves
+`index.html` with a 200 for any path its origins 404.** That is ordinary
+single-page-app fallback, but it means a backend route that does not exist
+reaches the browser as the dashboard, not as a 404 — so a missing or
+conditionally-registered route reads as a working page. It is how anomaly
+detection stayed switched off in production unnoticed: `GET
+/api/automation/v1/anomalies/digest` returned the dashboard HTML rather than
+anything that looked wrong.
+
+When checking whether a production route exists, check the content type, and
+compare against a path you know is absent:
+
+```
+curl -s -o /dev/null -w '%{http_code} %{content_type}
+' \
+  https://spacetraders.radomskyi.com/api/automation/v1/anomalies/digest
+curl -s -o /dev/null -w '%{http_code} %{content_type}
+' \
+  https://spacetraders.radomskyi.com/api/automation/v1/definitely-not-a-route
+```
+
+A real route answers `application/json`; a missing one answers `text/html` with
+the same 200.
+
 Each backend exposes its own Swagger UI:
 
 - navigation-service: http://localhost:8081/swagger-ui.html
