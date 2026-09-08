@@ -1,0 +1,94 @@
+{
+  "$comment": "Canonical st-gateway failure conditions and what a client service must answer for each. Source of truth for the conformance tests in agent-service, fleet-service and navigation-service, which vendor this file verbatim. See ../docs/design/upstream-errors.md.",
+  "version": 1,
+  "cases": [
+    {
+      "name": "game-refusal",
+      "why": "SpaceTraders refused the action in this ship state. The gateway passes the game's status and body through unchanged.",
+      "gateway": {
+        "status": 400,
+        "body": "{\"error\":{\"message\":\"Ship is not currently docked.\",\"code\":4214}}"
+      },
+      "expect": { "status": 400, "message": "Ship is not currently docked.", "code": 4214 }
+    },
+    {
+      "name": "game-cooldown",
+      "why": "A 409 from the game. Distinguishable from a refusal only by status and code, which is why both are relayed.",
+      "gateway": {
+        "status": 409,
+        "body": "{\"error\":{\"message\":\"Ship action is still on cooldown.\",\"code\":4000}}"
+      },
+      "expect": { "status": 409, "message": "Ship action is still on cooldown.", "code": 4000 }
+    },
+    {
+      "name": "caller-unauthenticated",
+      "why": "The caller's own session was rejected. Collapsing this to 502 would tell the caller the fleet is broken when their token has simply expired.",
+      "gateway": {
+        "status": 401,
+        "body": "{\"error\":{\"message\":\"Invalid or missing session token\"}}"
+      },
+      "expect": { "status": 401, "message": "Invalid or missing session token", "code": null }
+    },
+    {
+      "name": "credential-not-configured",
+      "why": "auth-service has no agent token yet. An operator has to act; nothing retries its way out of it. The 503 and this exact sentence are the only signal that says so.",
+      "gateway": {
+        "status": 503,
+        "body": "{\"error\":{\"message\":\"SpaceTraders credential not configured\"}}"
+      },
+      "expect": { "status": 503, "message": "SpaceTraders credential not configured", "code": null }
+    },
+    {
+      "name": "auth-service-unavailable",
+      "why": "The same status as the case above, and a different problem: this one resolves on its own. Relaying the message is what keeps them apart.",
+      "gateway": {
+        "status": 503,
+        "body": "{\"error\":{\"message\":\"auth-service unavailable: cannot obtain a SpaceTraders credential\"}}"
+      },
+      "expect": {
+        "status": 503,
+        "message": "auth-service unavailable: cannot obtain a SpaceTraders credential",
+        "code": null
+      }
+    },
+    {
+      "name": "spacetraders-unreachable",
+      "why": "The gateway reached its own limit of retries against the game. It is a 502 because the gateway says so, not because the client decided to make it one.",
+      "gateway": {
+        "status": 502,
+        "body": "{\"error\":{\"message\":\"SpaceTraders unreachable: dial tcp: i/o timeout\"}}"
+      },
+      "expect": { "status": 502, "message": "SpaceTraders unreachable: dial tcp: i/o timeout", "code": null }
+    },
+    {
+      "name": "body-too-large",
+      "why": "The gateway's own body-size limit. A 413 relayed as a 413 tells the caller to send less; relayed as a 502 tells them to try again, which will not help.",
+      "gateway": { "status": 413, "body": "{\"error\":{\"message\":\"request entity too large\"}}" },
+      "expect": { "status": 413, "message": "request entity too large", "code": null }
+    },
+    {
+      "name": "non-envelope-error-body",
+      "why": "A proxy or load balancer between here and the gateway answering with HTML. There is no message to lift, so the raw body stands in, truncated.",
+      "gateway": { "status": 502, "body": "<html><body>502 Bad Gateway</body></html>" },
+      "expect": { "status": 502, "messageContains": "502 Bad Gateway", "code": null }
+    },
+    {
+      "name": "empty-error-body",
+      "why": "A non-2xx with nothing in it at all. Still relayed by status; the message is the client's own, since there is none to relay.",
+      "gateway": { "status": 500, "body": "" },
+      "expect": { "status": 500, "messageNotEmpty": true, "code": null }
+    },
+    {
+      "name": "gateway-unreachable",
+      "why": "No response at all: connection refused, DNS failure, read timeout, or a body that died mid-read. The only condition the client itself gets to classify, because the gateway never spoke.",
+      "gateway": { "transport": "no-response" },
+      "expect": { "status": 504, "messageNotEmpty": true, "code": null }
+    },
+    {
+      "name": "unusable-success-body",
+      "why": "A 2xx the client cannot use — not JSON, or missing the envelope the game always sends. The gateway answered and the client cannot pass it on, which is what 502 means.",
+      "gateway": { "status": 200, "body": "not json at all" },
+      "expect": { "status": 502, "messageNotEmpty": true, "code": null }
+    }
+  ]
+}

@@ -23,6 +23,9 @@ Start with [the decision model on one page](docs/algorithms.md#the-decision-mode
   autopilot design and spec, and the
   [authentication design](docs/design/auth-design.md) covering Clerk identity
   and the credential-owning auth-service
+- **[Upstream errors](docs/design/upstream-errors.md)** — what a service
+  answers when st-gateway does not, and the conformance fixtures every client
+  of it is tested against
 
 ## Services
 
