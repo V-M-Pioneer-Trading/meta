@@ -82,11 +82,9 @@ When checking whether a production route exists, check the content type, and
 compare against a path you know is absent:
 
 ```
-curl -s -o /dev/null -w '%{http_code} %{content_type}
-' \
+curl -s -o /dev/null -w '%{http_code} %{content_type}\n' \
   https://spacetraders.radomskyi.com/api/automation/v1/anomalies/digest
-curl -s -o /dev/null -w '%{http_code} %{content_type}
-' \
+curl -s -o /dev/null -w '%{http_code} %{content_type}\n' \
   https://spacetraders.radomskyi.com/api/automation/v1/definitely-not-a-route
 ```
 
