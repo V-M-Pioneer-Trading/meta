@@ -147,11 +147,11 @@ and the only one that can see whether a credential exists. A client classifies
 exactly one condition, "the gateway did not answer me", and relays everything
 else with the gateway's own status, message and error code.
 
-They had drifted into three different answers for the same condition, and two
-of those cost real information: navigation-service collapsed every upstream 5xx
-to a 502, which hid the one sentence that says an operator must configure a
-credential, and made a caller's own expired session read as a broken fleet.
-The rule and its conformance fixtures are in
+They had drifted into three different answers for the same condition. The one
+that costs real information: navigation-service collapsed every upstream 5xx to
+a 502, discarding the body with it — including the one sentence that says a
+credential is missing and an operator must act rather than wait. The rule and
+its conformance fixtures are in
 [design/upstream-errors.md](design/upstream-errors.md).
 
 ### Deterministic core, AI on top
