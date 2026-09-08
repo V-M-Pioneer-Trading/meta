@@ -84,6 +84,13 @@ then re-copy.
 Local additions belong in the service's own tests. This file holds only
 conditions every client must answer identically.
 
+**A case must not be satisfiable by an empty answer.** `oversized-error-body`
+asserted only a status and a maximum length, which an empty message meets
+perfectly — a reviewer found it by deleting the message from a client and
+watching the case stay green. Every case that bounds a message now also asserts
+there is one. The same trap is available to any future case that asserts only an
+upper bound.
+
 ## What this does not standardise, and what that costs
 
 The **outward** envelope each service presents to its own callers.
