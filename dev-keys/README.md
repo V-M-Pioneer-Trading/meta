@@ -40,6 +40,14 @@ Then:
 curl -X POST http://localhost:3003/api/automation/v1/autopilot/abort -H "Authorization: $(node scripts/mint-dev-token.mjs)"
 ```
 
+The minter is not the only thing that signs with the private half.
+automation-service is itself a caller of agent-service and fleet-service
+(auth-design.md decision 19), so it needs a machine identity of its own rather
+than a human session: in production it mints one from a Clerk Machine, and
+locally it signs one itself against this same key, which `docker-compose.yml`
+bind-mounts into it as `DEV_M2M_SIGNING_KEY_FILE`. Same anchor, same
+verification path at the receiving end, and still nothing production trusts.
+
 ## What this does *not* cover
 
 The **frontend** is a different matter. command-interface uses Clerk's own SDK

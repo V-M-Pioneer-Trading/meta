@@ -15,13 +15,17 @@ decisions; this file only fixes vocabulary.
   anonymously; may not cause a live upstream call except where a backend
   explicitly allows it.
 - **Scope** — a permission literal in the session token. Three exist:
-  - `fleet:control` — arm, pause, abort, replan, knob writes, ship actions,
-    purchases and sells. Reversible, but moves credits and ships.
+  - `fleet:control` — driving the fleet. Reversible, but moves credits and
+    ships.
   - `agent:reset` — register / restore the agent token. Irreversible and
     credential-bearing.
   - `universe:refresh` — force navigation-service to re-fetch universe data
     live. Spends the shared rate budget; moves nothing. Not implied by
     `fleet:control`.
+
+  Which routes each one actually gates is the table in
+  [auth-design.md decision 2](docs/design/auth-design.md#2-spacetraders-is-publicly-readable-and-privately-writable),
+  not this list. Restating it here is how the two drifted apart once already.
 - **Game token** (agent token) — the SpaceTraders credential for the fleet's
   agent. Held by auth-service, injected by st-gateway. Never in the browser,
   never in any other service.

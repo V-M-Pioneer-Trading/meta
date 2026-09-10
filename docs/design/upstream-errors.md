@@ -49,15 +49,22 @@ The general form of the problem: a client service has strictly less information
 than the gateway. It did not talk to SpaceTraders and it cannot see whether a
 credential exists, so every verdict it re-decides is a guess overwriting a fact.
 
-The concrete cost, and it is a diagnostic one rather than a behavioural one:
-the gateway answers `503 SpaceTraders credential not configured`, which is the
-one thing that says an operator must act rather than wait. Reached through
-navigation-service that becomes a bare `502` with the sentence thrown away, and
-automation-service — which classifies failures by exactly that sentence —
-records it as an ordinary outage. It already documents the case as a known gap
-in `gameClients.ts`: *"the same behaviour, a less precise label"*. The retry
-behaviour genuinely is the same; what is lost is any way to find out, from the
-event log, that the fleet is stopped for a reason no amount of waiting fixes.
+The concrete cost was a diagnostic one rather than a behavioural one, and it is
+the reason this rule exists: the gateway answers `503 SpaceTraders credential
+not configured`, which is the one thing that says an operator must act rather
+than wait. Reached through navigation-service that became a bare `502` with the
+sentence thrown away, and automation-service — which classifies failures by
+exactly that sentence — recorded it as an ordinary outage. It documented the
+case as a known gap in `gameClients.ts`: *"the same behaviour, a less precise
+label"*. The retry behaviour genuinely was the same; what was lost was any way
+to find out, from the event log, that the fleet was stopped for a reason no
+amount of waiting fixes.
+
+navigation-service now relays the gateway's status, message and pacing headers
+like the other two, and drives the conformance fixtures below to prove it, so
+that sentence reaches automation-service intact. The lesson outlives the bug:
+what a client discards, nothing downstream can recover, and the loss shows up
+not as an error but as a less useful true statement.
 
 ## The one thing a client does decide
 

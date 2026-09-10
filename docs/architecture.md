@@ -19,16 +19,17 @@ top as a monitor**. Coded algorithms handle routing, pricing, and scheduling. An
 AI supervisor watches health metrics and nudges parameters when things drift —
 but it is never in the hot loop, and the fleet keeps running when it's down.
 
-## Why there are eight services
+## Why there are nine services
 
 Because the split is the exercise, not because the workload needs it.
 
 One ship mining one system at two requests per second is comfortably a single
-process — probably a single file. Eight services, four datastores and a rate
-gateway exist here to work through service boundaries, a shared global rate
-budget, per-service persistence choices, and an AI component fenced off from the
-deterministic core. Those are the problems worth practising on, and they're only
-real when the boundaries are real.
+process — probably a single file. Nine services — seven backends counting the
+rate gateway and the credential holder, plus the dashboard and the MCP server —
+and four datastores exist here to work through service boundaries, a shared
+global rate budget, per-service persistence choices, and an AI component fenced
+off from the deterministic core. Those are the problems worth practising on, and
+they're only real when the boundaries are real.
 
 The cost is honest: a change that touches routing and dispatch touches two
 repos, and local development needs `docker compose`. That's the trade being
@@ -52,6 +53,7 @@ graph TD
     AGENT["agent-service<br/>(agent, ships, contracts, transactions)"]
     FLEET["fleet-service<br/>(ship actions)"]
     GW["st-gateway<br/>(global rate budget)"]
+    AUTH["auth-service<br/>(account + agent token)"]
     ST["SpaceTraders API"]
     MCP["spacetraders-mcp-server<br/>(interactive operator tools)"]
 
@@ -68,6 +70,8 @@ graph TD
     NAV --> GW
     AGENT --> GW
     FLEET --> GW
+    GW -- "agent token" --> AUTH
+    AUTH -- "reset polling (GET /)" --> GW
     GW --> ST
 ```
 
@@ -79,6 +83,7 @@ graph TD
 | [agent-service](https://github.com/V-M-Pioneer-Trading/agent-service) | Go / MySQL | Agent profile, ship list, contracts (read + accept/fulfill), contract delivery history, ship/cargo purchases and cargo sells, transaction history |
 | [fleet-service](https://github.com/V-M-Pioneer-Trading/fleet-service) | Node/TypeScript | All ship *actions*: orbit, dock, navigate, extract, survey, refuel, deliver. Stateless |
 | [st-gateway](https://github.com/V-M-Pioneer-Trading/st-gateway) | Node/TypeScript | The only door to the SpaceTraders API: one global rate budget, priority queueing, centralized retries |
+| [auth-service](https://github.com/V-M-Pioneer-Trading/auth-service) | Go / SQLite | The only holder of the SpaceTraders account and agent tokens: hands the agent token to st-gateway, detects universe resets and re-registers |
 | [automation-service](https://github.com/V-M-Pioneer-Trading/automation-service) | Node/TypeScript / Postgres | The deterministic autopilot engine: planner, per-ship state machines, anomaly checks, event log |
 | [ai-service](https://github.com/V-M-Pioneer-Trading/ai-service) | Node/TypeScript | The AI supervisor: receives anomalies, runs a bounded OpenAI tool loop that may tune knobs or trigger replans |
 | [command-interface](https://github.com/V-M-Pioneer-Trading/command-interface) | React / Vite | LCARS-themed operator dashboard: fleet map, mining controls, autopilot switch, observability panels |
@@ -196,9 +201,9 @@ believes about it.
 Planner decisions log every input they used, and scoring is pure arithmetic over
 exactly those inputs — no clock, no network. `npm run replay` in
 automation-service re-scores past decisions under different knob values and
-reports how many would have gone differently. A knob change that flips nothing
-is a knob change that does nothing, which is worth knowing before you attribute
-a later swing in profit to it.
+reports how many would have gone differently. See
+[algorithms.md](algorithms.md#shadow-mode-and-replay) for what it replays, what
+it deliberately doesn't, and why the count is the thing worth reading.
 
 ### Everything is an event
 
@@ -214,7 +219,8 @@ debugged deterministically.
 Each service picks the smallest storage that fits: SQLite for
 navigation-service's cache (single-writer, read-heavy), MySQL for
 agent-service's delivery and transaction history, Postgres for automation-service's task
-state/event log/knobs, and no database at all for fleet-service, st-gateway,
+state/event log/knobs, SQLite again for auth-service's handful of credential
+rows, and no database at all for fleet-service, st-gateway,
 and ai-service, which are stateless by design.
 
 ### Testing: one seam per service
@@ -244,12 +250,21 @@ Dijkstra rather than BFS).
 
 Where things stand today:
 
-- **Live and merged**: all seven services plus the MCP server; the full
-  single-ship autopilot loop (mining, contracts, scouting), shadow mode,
-  anomaly detection, metrics, classified knobs calibrated from observation, the
-  decision replay tool, the AI supervisor, and the dashboard panels.
-- **Built but not yet applied**: production Terraform (see
+- **Merged, deployed, and working**: the six backends on the production host —
+  navigation, agent, fleet, automation, st-gateway and auth-service — and the
+  dashboard in front of them; the full single-ship autopilot loop (mining,
+  contracts, scouting), shadow mode, anomaly detection, metrics, classified
+  knobs calibrated from observation, the decision replay tool, and the dashboard
+  panels. The Terraform that puts them there is applied, not merely written (see
   [operations.md](operations.md#production-deployment)).
+- **Merged, but not deployed**: ai-service. It has no Terraform stack and no CI
+  workflow at all, so the AI supervisor runs under local `docker compose` only —
+  and the anomaly webhook that would feed it is unset in production either way.
+  See [operations.md](operations.md#deployment-gaps).
+- **Merged, but not working**: spacetraders-mcp-server, which calls
+  automation-service's admin routes with no credential and has been broken since
+  increment 1 gated them. Accepted rather than solved — see auth-design's
+  [Deferred, and tracked](design/auth-design.md#deferred-and-tracked).
 - **Known single-ship scope**: the planner and replan machinery are written to
   scale to N ships, but dispatch is still keyed to one configured mining ship.
   Fleet expansion (auto-purchasing ships) is the first v2 item, followed by

@@ -56,7 +56,7 @@ A ship sits at a market; two fields are in range. Speed 30, overhead 0.3h.
 
 | | one way | round trip | credits/cycle | cycleHours | score |
 |---|---|---|---|---|---|
-| `BELT-NEAR` | 10 | 20 | 4,200 | 0.97 | **4,340 cr/h** |
+| `BELT-NEAR` | 10 | 20 | 4,200 | 0.97 | **4,345 cr/h** |
 | `BELT-FAR` | 90 | 180 | 11,800 | 6.3 | 1,873 cr/h |
 
 `BELT-NEAR` wins despite being worth a third as much per trip, because it turns
@@ -272,7 +272,7 @@ investigates. Every threshold is a bounded `alert` knob.
 | `ship_idle` | A ship's task hasn't changed phase in N minutes (while armed and live) |
 | `earnings_stalled` | The hourly rate collapsed against its own history, **or** credits show no net increase across a window |
 | `consecutive_failures` | One ship accumulates N consecutive failures |
-| `error_rate` | The error fraction of recent mining events exceeds a threshold |
+| `error_rate` | The error fraction of recent ship-task events — mining, contract or scout alike — exceeds a threshold |
 | `market_stale` | A market in active use hasn't been repriced in N minutes |
 
 `earnings_stalled` merges what used to be two checks. They measured one thing

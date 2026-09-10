@@ -13,10 +13,13 @@ spacetraders/
 ├── agent-service/
 ├── fleet-service/
 ├── st-gateway/
+├── auth-service/
 ├── automation-service/
 ├── ai-service/
 ├── command-interface/
 ├── spacetraders-mcp-server/
+├── V-M-Pioneer-Trading_infrastructure/   ← backend Terraform, not run locally
+├── spacetraders-api-docs/                ← the game's own OpenAPI spec
 └── meta/            ← this repo
 ```
 
@@ -38,6 +41,7 @@ Starts:
 | st-gateway | 3002 | none |
 | agent-service | 8080 | MySQL (container) |
 | navigation-service | 8081 | SQLite |
+| auth-service | 8082 | SQLite |
 | fleet-service | 3001 | none |
 | automation-service | 3003 | Postgres (container) |
 | ai-service | 3004 | none (in-memory dedupe state) |
@@ -90,6 +94,13 @@ curl -s -o /dev/null -w '%{http_code} %{content_type}\n' \
 
 A real route answers `application/json`; a missing one answers `text/html` with
 the same 200.
+
+Curling an authenticated route needs a token, and locally there is exactly one
+way to get one: every backend verifies against the committed development
+keypair in `dev-keys/`, which compose mounts into all of them, and
+`node scripts/mint-dev-token.mjs` signs a token against its private half. See
+[dev-keys/README.md](../dev-keys/README.md) for why that key is committed, why
+it is safe, and how to narrow the scopes it carries.
 
 Each backend exposes its own Swagger UI:
 
@@ -248,11 +259,20 @@ running to be up.
 
 ## CI and deploys
 
-Every service's CI job set is split the same way: a `test` job runs on pull
-requests (the service's real test suite — no image build), and a `docker` job
-runs only on merge to main (build, push to GHCR, then trigger an SSM redeploy
-on the host). command-interface deploys via S3 sync plus CloudFront
-invalidation instead, on the same merge-to-main trigger.
+Every service's CI job set is split the same way: a `test` job runs the
+service's real test suite on pull requests **and** on pushes to main, and a
+`docker` job runs only on a push (build, push to GHCR, then trigger an SSM
+redeploy on the host) and `needs` the test job, so a merge whose tests fail
+deploys nothing. command-interface deploys via S3 sync plus CloudFront
+invalidation instead, on the same push trigger and behind the same gate.
+
+Both halves of that are corrections. The `test` job used to be gated to
+`pull_request`, so a merge to main went straight to build-and-deploy with no
+suite run against what was actually being deployed; and the `docker` job did not
+`need` it, so nothing was waiting on a test result even where one existed. The
+`pull_request` trigger also carries no branch filter now, because filtering it
+to main meant a pull request stacked on another branch ran no checks at all and
+looked green by default.
 
 One exception: **ai-service has no CI workflow at all** — see "Deployment
 gaps" above.
@@ -291,8 +311,7 @@ already decided:
 npm run replay -- --since 6h --set mine.taskWeight=2
 ```
 
-That re-scores past planner decisions under the proposed value and reports how
-many would have gone differently. Zero flips means the change does nothing —
-worth knowing before you attribute a later swing in profit to it. It needs
-`DATABASE_URL` pointing at automation-service's Postgres and makes no network
-calls of its own.
+It needs `DATABASE_URL` pointing at automation-service's Postgres and makes no
+network calls of its own. What it re-scores, what it deliberately doesn't, and
+how to read the result are in
+[algorithms.md](algorithms.md#shadow-mode-and-replay).
