@@ -198,19 +198,23 @@ below.
   `docker rm -f agent-service-mysql && docker run ...` for agent-service's
   MySQL (briefly restarts it). The reverse is already true today: every
   agent-service deploy already restarts st-gateway as a side effect.
-- **Security group ports 80–8080 are open to CloudFront's IP prefix list as
-  a single range**, not one rule per service — a per-service rule would have
-  exceeded the account's rules-per-security-group quota (that quota counts a
-  prefix-list rule by the list's entry count, ~45, not as a flat 1). Any new
-  backend service that lands in that range needs no new security-group
-  change; anything outside it does.
+- **The security group admits port 443 only**, from CloudFront's IP prefix
+  list, to Caddy — a single rule, and the only ingress rule in the
+  infrastructure repo (`navigation-service/main.tf`). No backend port is
+  reachable from off-host at all, so a new service needs no security-group
+  change whatever port it picks. It used to be a single 80–8080 range rather
+  than one rule per service, because a prefix-list rule counts against the
+  rules-per-security-group quota by the list's entry count (~45) rather than
+  as a flat 1, and per-service rules would have exceeded it. That span is
+  gone; the quota is why the replacement is still one rule rather than
+  several.
 - **st-gateway has no CloudFront origin** — internal-only by design, it's
   only ever called server-to-server (every other backend's
   `ST_GATEWAY_URL=http://localhost:3002`) as "the only door to SpaceTraders."
   It was browser-reachable in production until the `authnet` move: its port
-  falls inside the shared 80–8080 security-group range, so nothing at the
-  network layer blocked it. It now publishes on `127.0.0.1` only, so the
-  security-group range no longer exposes it and the gap is closed.
+  fell inside the old 80–8080 range, so nothing at the network layer blocked
+  it. It now publishes on `127.0.0.1` only, and the range that exposed it no
+  longer exists, so the gap is closed twice over.
 
 ### Deployment gaps
 
