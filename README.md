@@ -26,6 +26,11 @@ Start with [the decision model on one page](docs/algorithms.md#the-decision-mode
 - **[Upstream errors](docs/design/upstream-errors.md)** — what a service
   answers when st-gateway does not, and the conformance fixtures every client
   of it is tested against
+- **[Token introspection](docs/design/token-introspection.md)** — what a
+  service answers when it asks auth-service to verify a token instead of
+  verifying it itself, and the
+  [conformance fixture](fixtures/introspection.json) binding the three client
+  implementations. Decided 2026-09-20, **not shipped**
 - **[Local development keypair](dev-keys/README.md)** — why a private key is
   committed here, why that is safe, and how to mint a token against it
 

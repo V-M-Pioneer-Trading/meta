@@ -34,6 +34,23 @@ decisions; this file only fixes vocabulary.
 - **Account token** — the SpaceTraders credential that can register an agent
   after a universe reset. Held by auth-service only.
 
+*The next three names are fixed by
+[decision 21](docs/design/auth-design.md#21-one-verifier-every-service-asks-auth-service-what-a-token-carries),
+decided 2026-09-20 and **not shipped** — every service still verifies tokens
+itself. They are listed here so the vocabulary is agreed before the code
+arrives.*
+
+- **The center** — auth-service in its second role: the one component that
+  verifies a Clerk token. Distinct from the **vault**, its first role, which
+  holds the game and account tokens. Same process, same port, different job.
+- **Introspection** — a service asking the center whether a token is valid and
+  what scopes it carries, instead of checking the signature itself. The
+  contract and the exact answers are in
+  [token-introspection.md](docs/design/token-introspection.md).
+- **`kind`** — what the center says a verified caller is: `operator` or
+  `machine`. It replaces reading the `sub` prefix, which after decision 21 only
+  the center does.
+
 ## Traffic
 
 - **Live fetch** — a call that reaches SpaceTraders (through st-gateway) rather
