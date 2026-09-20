@@ -2,7 +2,12 @@
 
 *Outcome of a design interview, 2026-08-19. Status: increment 1 shipped 2026-08-21,
 increment 2 shipped 2026-08-22 (see [Increment 1 — shipped](#increment-1--shipped)
-and [Increment 2 — shipped](#increment-2--shipped) below); increments 3–4 pending.*
+and [Increment 2 — shipped](#increment-2--shipped) below); increments 3–4 pending.
+[Decision 21](#21-one-verifier-every-service-asks-auth-service-what-a-token-carries),
+added 2026-09-20, reverses decision 4 and is **decided but not shipped** —
+nothing it describes is current behaviour; see
+[meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80) for the
+rollout.*
 
 This document covers **two independent applications** that adopt the same vendor
 for different reasons: this project (`spacetraders`) and `mradomsky/stagehopper`.
@@ -307,6 +312,21 @@ correctly-signed token carrying it.
 
 Rejected: **a central authorization service**, for the reasons above.
 
+*Status: **superseded 2026-09-20 by
+[decision 21](#21-one-verifier-every-service-asks-auth-service-what-a-token-carries)**,
+which adopts the central authorization service this decision rejects — after
+six hand-ported verifiers drifted and two routes went unguarded. The reversal
+is the owner's, and the two objections above (a synchronous hop on the hot
+path, a single point of failure) are **accepted as costs, not refuted**: read
+them as still true and still paid. **Decision 21 has not shipped** — as of
+2026-09-20 every service verifies locally exactly as this decision describes,
+and this paragraph is the only thing about it that has changed. Rollout:
+[meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80). What survives
+21 unchanged: `scope` rather than `role`, the claim sourced from
+`public_metadata` and never `unsafe_metadata`, and session-token customisation
+here against a JWT template in stagehopper. 21 moves **who verifies**, not what
+is verified or where a permission lives.*
+
 ### 5. st-gateway injects the agent token; nothing else holds it
 
 Callers stop sending an `Authorization` header for game calls. st-gateway asks
@@ -572,6 +592,28 @@ container sharing the namespace raises the bar without setting a boundary. Movin
 the entire host onto user-defined bridges is the structural fix and is tracked in
 [meta#58](https://github.com/V-M-Pioneer-Trading/meta/issues/58).
 
+*Note, 2026-09-20 — an accepted temporary downgrade, and it has **not** taken
+effect yet. [Decision 21](#21-one-verifier-every-service-asks-auth-service-what-a-token-carries)
+will publish auth-service's port to the host (`-p 127.0.0.1:<port>:<port>`) and
+add one permitting rule to `authnet-out-guard`, so the four host-network
+services can reach the introspection route. The side effect is that
+`GET /auth/v1/token` — the route that returns the game token — becomes
+network-reachable by them too: **unreachable and secret-guarded today,
+secret-guarded alone afterwards**, which is exactly the posture this decision
+rejects. The owner accepted that on 2026-09-20; a second listener port would
+have avoided it and was declined as not worth building for an interim state.
+What keeps it small is that the vault secret stays with st-gateway alone —
+which is why decision 21's **separate** introspection secret is load-bearing
+rather than tidy. **The downgrade ends when the vault moves into st-gateway**,
+which deletes the token route altogether, and that move is deliberately not
+part of meta#80. **If it slips, the downgrade persists**; nothing else expires
+it. The firewall change itself is additive — a `RETURN` before the `DROP` —
+precisely because of the 2026-08-23 outages above; the scoping warning in this
+decision still governs, and `auth-service-authnet-guard` is not touched. As of
+2026-09-20 auth-service still publishes no host port and both chains are
+unchanged. Rollout:
+[meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80), step 3.*
+
 ### 10. Verification is networkless, and local development uses its own keypair
 
 Every service verifies with Clerk's **PEM public key** (`CLERK_JWT_KEY`) rather
@@ -603,6 +645,26 @@ and it eventually ships enabled.
 Known gap: auth-service's reset-recovery path cannot be exercised locally,
 because no account token exists there. Its tests stub `POST /register`, and the
 real path first runs during an actual universe wipe. This is accepted knowingly.
+
+*Note, 2026-09-20 — **not yet shipped**; today all six services still verify
+this way.
+[Decision 21](#21-one-verifier-every-service-asks-auth-service-what-a-token-carries)
+narrows the scope of this decision without weakening any of it. **Everything
+here survives, inside auth-service**: networkless RS256 against a PEM public
+key, no JWKS fetch, no bypass flag, the fixed dev keypair in `meta/dev-keys`
+and the minter beside it, and the rule that local, CI and production run one
+code path differing only in trust anchor. What changes is the blast radius of
+the word "every": after 21 only the center holds `CLERK_JWT_KEY`, so the other
+five services and st-gateway verify nothing locally and CI there stops
+generating an ephemeral keypair — their suites **stub the center** and drive
+[`fixtures/introspection.json`](../../fixtures/introspection.json) instead of
+signing tokens. Ephemeral keypairs remain in auth-service's own tests, which
+become the only place a real signature is checked. The no-bypass rule is what
+forbids the obvious shortcut: a migrated service must not keep local
+verification as a fallback for when the center is unreachable, because that is
+a second verification path that answers when the first will not — see decision
+21's rejected alternatives. Rollout:
+[meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80).*
 
 ### 11. ai-service authenticates with a shared secret, not a Clerk identity
 
@@ -777,6 +839,21 @@ elsewhere, just introduced deliberately instead of by accident.
 *Status: **closed 2026-09-05** — the transition window ended with Stage 5 (see
 decision 5's status). `X-SpaceTraders-Token` no longer exists anywhere.*
 
+*Note, 2026-09-20 — **not yet shipped**.
+[Decision 21](#21-one-verifier-every-service-asks-auth-service-what-a-token-carries)
+leaves this record's surviving half alone: the **access tiers stand exactly as
+written** — agent-service's own MySQL-backed reads public, its live reads behind
+a signed-in session with no particular scope, its mutations behind
+`fleet:control` — and so does every other service's route table. What changes
+is **who answers "is this session valid, and what scopes does it carry"**: the
+center rather than the service's own verifier. A tier is a property of a route
+and stays where the route is. The one visible addition is default-deny: after
+21 a mutating route that declares no scope is rejected rather than served,
+which is what makes another
+[meta#71](https://github.com/V-M-Pioneer-Trading/meta/issues/71) structurally
+impossible. Rollout:
+[meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80).*
+
 ### 19. automation-service authenticates its own agent/fleet-service calls with a Clerk M2M token
 
 Found in production the day increment 2 shipped, not anticipated by decision
@@ -863,6 +940,27 @@ all — there is no `X-SpaceTraders-Token` anywhere any more. The M2M token itse
 is untouched: it answers "which headless caller is this", which injection never
 addressed, which is why this decision survives increment 3 intact.*
 
+*Note, 2026-09-20 — **not yet shipped**.
+[Decision 21](#21-one-verifier-every-service-asks-auth-service-what-a-token-carries)
+keeps the **M2M token exactly as it is**: the same Clerk Machine, the same
+baked-in `scope` claim, the same in-memory cache refreshed at half its TTL, the
+same `Authorization: Bearer` on every outbound call. Minting stays a caller's
+concern and stays infrequent. What changes is **who verifies it** — the center,
+once, instead of agent-service and fleet-service each doing it. Two
+consequences worth naming. First, this decision's "zero verification-side code
+changes are needed anywhere" was true because the middleware could not tell a
+machine token from a human session; after 21 it can, because the center returns
+`kind: "machine"` for a `sub` that is not `user_…`, and that is the one place
+Clerk's `sub` conventions are known. Second, automation-service's knob-class
+fence must key on `kind === "machine"` and **not** on the presence of a header:
+what it needs to know is what the caller *is*, and after 21 that is a field in
+the center's answer rather than something inferred from how the request
+arrived. `CLERK_M2M_SECRET_KEY` stays with
+automation-service; only `CLERK_JWT_KEY` moves. Rollout:
+[meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80), step 8, whose
+one-hour shadow run is the only proof of the M2M path — the fleet is disarmed,
+so nothing else exercises it.*
+
 ### 20. `universe:refresh`: a third scope, for spending the rate budget without moving the fleet
 
 navigation-service's four `POST …/refresh` routes force a live re-walk of
@@ -899,6 +997,268 @@ caller that wants it.
 The Clerk dashboard step — adding `universe:refresh` to the operator's
 `public_metadata` scope — is manual and must be done before the first
 production refresh, which otherwise 403s: the correct fail-closed state.*
+
+### 21. One verifier: every service asks auth-service what a token carries
+
+*Status: **decided 2026-09-20; not shipped, not started.** Nothing in this
+decision is current behaviour. Today every service still verifies locally
+against `CLERK_JWT_KEY` exactly as [decision 4](#4-auth-service-owns-game-credentials-only-authorization-is-a-library)
+describes, and st-gateway still derives its lane the same way. The rollout is
+[meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80), eleven steps
+across seven repositories; this document is its step 1. Every sentence below
+says what will be true, never what is. Check meta#80's checkboxes before
+believing otherwise — this project has shipped documentation claiming a state
+the code was not in more than once, and the remedy is to date the claim and
+name the tracker.*
+
+**auth-service becomes the only component that verifies a Clerk token.** Every
+other service sends the token it received to auth-service, gets back the
+verified identity and the scopes that token carries, and compares those scopes
+against the one its own route declares. Verification happens in one process, in
+one language, once. Authorization — which scope a route needs — stays at the
+route, in the service that owns it. This **supersedes
+[decision 4](#4-auth-service-owns-game-credentials-only-authorization-is-a-library)**,
+whose objections are accepted rather than refuted; see *Accepted costs* below.
+
+#### Why
+
+Decision 4 was a bet that one small piece of verification code is cheap to
+carry in every service. Six of them later, the bet has visibly lost.
+
+- **Six hand-ported verifiers** — Go ×2 (agent-service, auth-service), TS ×3
+  (fleet-service, automation-service, st-gateway's lane deriver), Java ×1
+  (navigation-service) — plus st-gateway's separate `sub`-prefix convention.
+  They have drifted in error text, in whether an actor is recorded, and in
+  which guards exist at all
+  ([meta#74](https://github.com/V-M-Pioneer-Trading/meta/issues/74)).
+  automation-service's 403 still names the missing scope; the other four
+  refuse to. Each drift was correct in its own repository and wrong across the
+  fleet.
+- **Two real holes came from per-service enforcement, not from the design.**
+  navigation-service's refresh routes were open to any non-blank string until
+  2026-09-05 (see build order step 2), and
+  [meta#71](https://github.com/V-M-Pioneer-Trading/meta/issues/71) —
+  `POST /contracts/{id}/deliveries` on agent-service — is an unauthenticated
+  write to this day. Both are the same failure: a route that nobody remembered
+  to put a guard in front of. A per-service library cannot make that failure
+  impossible, because the library is only ever as good as the call site that
+  forgets it.
+
+The fix that makes it structural is not the hop by itself, it is the hop plus
+**default-deny on mutating methods**: a non-`GET` route that declares no scope
+is rejected rather than served. A future #71 stops being a thing someone has to
+notice.
+
+#### Accepted costs
+
+Stated here so nobody rediscovers them as bugs, and because decision 4 named
+the first two correctly:
+
+- **A localhost hop on the hot path of every authenticated request.** Decision
+  4 called this out and it is real. It is accepted: the hop is loopback on the
+  same host, and the drift it removes has already cost two production holes.
+- **A single point of failure, and it is fail-closed.** auth-service down means
+  every mutation answers `503` and the autopilot stops. Anonymous `GET`s that
+  carry no token keep working, because they never reach the center. This is
+  also decision 4's objection, accepted rather than answered: a stopped fleet
+  is a better failure than an unverified mutation, and the fleet already stops
+  when auth-service cannot supply the game token. There is **no client-side
+  cache**, deliberately — a cache is a second verification path with a
+  different answer, which is what
+  [decision 10](#10-verification-is-networkless-and-local-development-uses-its-own-keypair)
+  forbids, and it would make revocation mean nothing for its lifetime.
+- **Every auth-service deploy is a few seconds of `503` on mutations.** Deploys
+  already disarm the autopilot, so this costs an operator a retry and nothing
+  else.
+- **A temporary weakening of the vault's isolation** — see *Infrastructure
+  posture*.
+- **Offline verifiability is given up.** Decision 4 named it the property that
+  makes asymmetric JWTs worth adopting. It stays true of the token; it stops
+  being used by anything but the center.
+
+#### The contract
+
+`POST /auth/v1/introspect`, shaped after RFC 7662.
+
+- Request: form-encoded `token=<jwt>` in the **body**. Never in a URL — a token
+  in a query string lands in access logs.
+- The caller authenticates with **one shared secret for all services**, sent as
+  `X-Introspection-Secret`. It is a **new** secret and must never be the vault's
+  `AUTH_SERVICE_SHARED_SECRET`; see *Infrastructure posture* for why that is
+  load-bearing rather than tidy.
+- Response, always `200` when the caller's secret is good:
+  - invalid, expired, foreign-signed or malformed token: `{"active": false}`
+  - valid token:
+    `{"active": true, "sub": "…", "scope": "a b c", "exp": 1234567890, "kind": "operator" | "machine"}`
+- `scope` is returned **verbatim and space-delimited**, whether the claim
+  arrived as a string or as an array. The center keeps no route-to-scope table;
+  it answers what the token says, not what a route needs.
+- `kind` is `operator` when `sub` starts `user_`, otherwise `machine`. This is
+  the one place that knows Clerk's `sub` conventions — st-gateway stops knowing
+  them, and so does automation-service's knob-class fence, which keys on `kind`
+  rather than on the presence of a header.
+- Wrong or missing caller secret: `401`. That `401` is about *us*, never about
+  the end user's token, and a calling service must not relay it as one.
+
+Verification inside the center is what every service does today, moved:
+`golang-jwt` stays, RS256 pinned, `exp` and `nbf` with a small leeway,
+`CLERK_ISSUER` checked when configured. It accepts Clerk JWTs only — operator
+sessions and automation-service's M2M token
+([decision 19](#19-automation-service-authenticates-its-own-agentfleet-service-calls-with-a-clerk-m2m-token)).
+The vault's shared secret and ai-service's `X-Service-Secret`
+([decision 11](#11-ai-service-authenticates-with-a-shared-secret-not-a-clerk-identity))
+are untouched by this work.
+
+**`azp` is deliberately not checked** (owner's decision, 2026-09-20). See *Not
+in this epic* for the reasoning and for what would reopen it.
+
+#### What a calling service does
+
+One **global** middleware per service — not a per-route decoration — and
+**default-deny on mutating methods**: a non-`GET` route that declares no scope
+is rejected. Scopes are declared at the route.
+
+| Situation | Answer |
+|---|---|
+| No `Authorization` header, public `GET` | proceed as a visitor. **No call to the center.** |
+| No `Authorization` header, guarded route | `401 a bearer token is required` |
+| Header present, `active: false` | `401 invalid or expired session`, on every method. A bad credential is **never** downgraded to visitor. |
+| Active, required scope missing | `403 this action requires a scope this session does not carry` — generic, and the scope is **not** named |
+| Center unreachable, times out, answers non-2xx, or rejects our secret | `503`, one fixed sentence, in the `{"error":{"message":…}}` envelope |
+
+The first three sentences are the ones four services already answer with; they
+are preserved byte for byte, and automation-service's scope-naming 403
+converges on the generic one as it migrates. The exact strings, and the `503`
+sentence, live in
+[`fixtures/introspection.json`](../../fixtures/introspection.json) — the same
+vendored-fixture pattern as
+[upstream-errors.md](upstream-errors.md), and for the same reason: three
+languages cannot be held to a prose specification.
+
+- **Client timeout 1 s, no retries.** A retry against a center that is down
+  doubles the latency of every failing request and changes nothing.
+- **No numeric error code.** `upstream-errors.md` excludes one on purpose and
+  this follows it. automation-service's failure classifier
+  ([automation-service#21](https://github.com/V-M-Pioneer-Trading/automation-service/issues/21))
+  must map this `503` to *upstream unavailable*, so an auth outage never spends
+  a target's retry budget.
+- The middleware hands `{sub, kind, scopes}` to handlers. navigation-service
+  needs it for [decision 3](#3-live-anonymous-reads-are-allowed-where-a-visitor-cannot-expand-them)'s
+  live-fetch rule, automation-service for `detail.actor` and for the knob-class
+  fence.
+- **st-gateway calls the center too, to pick its lane, and never rejects.**
+  Anything other than an active `operator` is `background` — including a center
+  that does not answer. Its policy is a separate, clearly marked group in the
+  fixture, because a gateway that fails closed would take the public read
+  surface down with the center.
+- **The vault's own two routes** (`agent-token`, `register`, scope
+  `agent:reset`) call the same verification function **in-process**. One
+  verification code path; auth-service never makes an HTTP call to itself.
+
+#### Where the client code lives
+
+- **One TS package** in its own repository, consumed **by git tag** by
+  fleet-service, automation-service and st-gateway. No registry: GitHub
+  Packages demands a token even for public packages, which breaks the Docker
+  builds. How built output ships — a committed `dist` or a `prepare` script —
+  is decided when the repository is created, not here.
+- **One Go implementation** (agent-service) and **one Java implementation**
+  (navigation-service). Two consumers between them and nothing to share; a
+  package each would be ceremony.
+- **[`fixtures/introspection.json`](../../fixtures/introspection.json) binds
+  all three.** Service suites stop signing tokens and stand up a stub center
+  instead. Ephemeral keypairs remain only in auth-service's own tests, which is
+  the only place a real signature is still checked.
+
+#### Infrastructure posture
+
+**Single process, single port, no new container.** Introspection is one more
+route on the listener auth-service already has.
+
+- **An accepted, temporary security downgrade (owner's decision, 2026-09-20).**
+  Publishing auth-service's only port to the host makes `GET /auth/v1/token`
+  network-reachable by the four host-network services. Until now it has been
+  unreachable *and* secret-guarded; it becomes secret-guarded **only** — the
+  posture [decision 9](#9-auth-service-is-isolated-by-network-secret-and-firewall--not-by-one-of-them)
+  explicitly rejected. A second listener port would have avoided it and was
+  declined as not worth building for an interim state.
+- **It ends when the vault moves into st-gateway**, which deletes the token
+  route altogether (see *Not in this epic*). **If that move slips, the
+  downgrade persists** — it has no other exit, and nothing expires it.
+- What keeps it small: the vault secret is held by **st-gateway alone**. That
+  is exactly what makes the **separate introspection secret load-bearing rather
+  than a nicety** — one secret for two purposes would hand every service the
+  key to the route that returns the game token, and the downgrade would stop
+  being small. Never reuse the vault's secret; never pass it to another stack.
+- The firewall change is **additive only**: one `RETURN` for
+  `-p tcp --dport <port>` in `authnet-out-guard`, before the `DROP`. The August
+  outages recorded in decision 9 came from an over-broad `DROP`; a permitting
+  rule cannot break an existing flow. `auth-service-authnet-guard` is not
+  touched — st-gateway reaches the center over bridge DNS and that chain
+  already returns for `authnet` sources.
+- Consumers gain `AUTH_INTROSPECTION_URL` and `AUTH_INTROSPECTION_SECRET`, and
+  **lose `CLERK_JWT_KEY` / `CLERK_ISSUER`** as each one migrates.
+  `terraform apply` is manual and comes **first**: a migrated image deployed
+  before its stack has the new variables crash-loops, which is precisely the
+  2026-08-22 outage recorded in
+  [Increment 2 — shipped](#increment-2--shipped).
+
+#### Rejected, and what is deliberately not decided here
+
+Rejected: **keeping decision 4** and paying down the drift with a shared test
+fixture per language. That is what `upstream-errors.md` does for the gateway
+clients, and it is the right shape for a *contract* between components that
+must each decide something. Verification is not that — every service is
+computing the same answer from the same key, and the only reason there are six
+copies is that there are six repositories.
+
+Rejected: **a per-request call to Clerk.** `verifySession()` is deprecated, and
+a vendor on the hot path contradicts the standing rule that the deterministic
+core survives third-party outages. The center verifies offline, exactly as
+decision 10 requires; what moves is *where*, not *how*.
+
+Rejected: **a fallback to local verification in a migrated service.** A second
+verification path that answers when the first cannot is the thing decision 10
+forbids, and it would be enabled precisely when the center's answer matters
+most. Rollback is redeploying the previous image tag.
+
+**Not in this epic** — recorded so each is a decision rather than an omission:
+
+- **Moving the credential vault into st-gateway**, so the game token lives only
+  where it is used. Agreed in principle. It ends the temporary isolation
+  downgrade above, and removes the token route, the vault secret, both iptables
+  chains and the poll/fetch cycle. It is a **separate feature after this one**:
+  it ports ~930 lines of reset-recovery Go that
+  [decision 10](#10-verification-is-networkless-and-local-development-uses-its-own-keypair)
+  already records as unexercisable locally, and mixing that with a brand-new
+  hot-path dependency would make a production failure unattributable.
+- **The [meta#58](https://github.com/V-M-Pioneer-Trading/meta/issues/58)
+  follow-up.** Once the host is on bridges and the vault has moved, a proxy
+  doing `forward_auth` with identity headers could delete the per-language
+  clients entirely. That needs each service reachable *only* from the proxy —
+  **a shared `stnet` bridge alone does not give that**, because any sibling
+  container on it could forge the identity headers, which is strictly worse
+  than the token it replaces. Record it on #58; do not build it.
+- **`clerk-sdk-go` inside the center.** Its issuer check is satisfiable (the
+  dev minter can emit a Clerk-shaped `iss`), so decision 10 is not the
+  obstacle. The unknown is whether `jwt.Verify` accepts the M2M JWT that drives
+  the autopilot, which only a live token can answer. The swap is local to one
+  file; revisit with a live test.
+- **Checking `azp`.** Not required by any JWT specification; it is an OIDC
+  claim that Clerk's manual-verification guide lists as a step. Its purpose is
+  CSRF protection when the token travels in a **cookie**. Here it travels only
+  in `Authorization`, which a browser never attaches by itself. What remains is
+  phishing — a foreign site using our public Clerk key, getting the operator to
+  sign in, and replaying the token — which is plausible only because production
+  still runs on a Clerk **development** instance, accepting any origin; a
+  production instance restricts origins itself. The check would also add a new
+  way to fail closed, since a wrong origin list locks the operator out.
+  **Reopen if** a token ever travels in a cookie, or a second frontend shares
+  this Clerk instance. Moving to a production Clerk instance closes the rest
+  without code.
+- **ai-service moving to a Clerk M2M token**
+  ([meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59)). Do it
+  when ai-service deploys.
 
 ## New repository: `auth-service`
 
@@ -993,6 +1353,22 @@ fixed.
    [autopilot-spec.md](autopilot-spec.md)'s account/agent token confusion is
    corrected in place, with a dated note saying what was changed rather than a
    silent rewrite of a frozen record.
+5. **Central introspection.** ⬜ **Not started** — decided 2026-09-20, tracked
+   as [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80), which
+   holds the eleven ordered steps and is the only place to read what has
+   actually landed. auth-service gains `POST /auth/v1/introspect`; every other
+   service replaces its local verifier with a call to it and a global
+   default-deny middleware; `CLERK_JWT_KEY` leaves every stack but
+   auth-service's. Per
+   [decision 21](#21-one-verifier-every-service-asks-auth-service-what-a-token-carries),
+   one service at a time, each soaked in production before the next, with no
+   fallback to local verification in a migrated service. **The ordering
+   constraint here is fleet-service before agent-service**: agent-service's
+   `deliveries` route only starts requiring `fleet:control`
+   ([meta#71](https://github.com/V-M-Pioneer-Trading/meta/issues/71)) once
+   fleet-service forwards the caller's bearer on the call that reaches it, or
+   contract delivery recording breaks. Infrastructure applies before every
+   deploy, never after.
 
 **stagehopper is an independent stream** — separate tenant, separate repository,
 no shared code — and can land at any point.
@@ -1006,6 +1382,21 @@ no shared code — and can land at any point.
   ai-service shared secret with Clerk M2M tokens. Superseded in priority by
   [decision 19](#19-automation-service-authenticates-its-own-agentfleet-service-calls-with-a-clerk-m2m-token),
   which needs the same mechanism sooner, for automation-service itself.
+- **Moving the credential vault into st-gateway**, so the game token lives only
+  where it is used. Agreed in principle, deliberately **not** part of
+  [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80): it ports
+  ~930 lines of reset-recovery Go that cannot be exercised locally (decision
+  10's known gap), and doing that alongside a new hot-path dependency would
+  make a production failure unattributable. It is also the **only exit** from
+  the isolation downgrade
+  [decision 21](#21-one-verifier-every-service-asks-auth-service-what-a-token-carries)
+  accepts — it deletes `GET /auth/v1/token`, the vault secret, both iptables
+  chains and the poll/fetch cycle. If it slips, that downgrade persists.
+- **Checking `azp`** — declined 2026-09-20, with named reopening conditions:
+  **a token that travels in a cookie**, or **a second frontend sharing this
+  Clerk instance**. Either makes the CSRF and phishing arguments in decision
+  21 bite. Moving off the Clerk *development* instance closes the rest without
+  code, since a production instance restricts origins itself.
 - **Per-container IAM.** Every container reads the shared EC2 instance profile
   through IMDS, so SSM parameters are effectively host-wide. Fixing this properly
   needs ECS task roles or EKS IRSA — a different hosting model, not a

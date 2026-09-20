@@ -132,7 +132,9 @@ sees a game credential. Arming the autopilot is a statement of intent
 What every other request carries instead is the operator's **Clerk session**,
 verified locally by each backend against a public key and forwarded to
 st-gateway, which derives queue priority from it. See
-[auth-design.md](design/auth-design.md), decisions 4–6.
+[auth-design.md](design/auth-design.md), decisions 4–6. (Local verification is
+still how it works today; [decision 21](design/auth-design.md#21-one-verifier-every-service-asks-auth-service-what-a-token-carries)
+moves it into auth-service and has not shipped.)
 
 ### One gateway owns the rate budget
 
