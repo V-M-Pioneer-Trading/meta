@@ -1,5 +1,5 @@
 {
-  "$comment": "Canonical token-introspection conditions: what auth-service (the center) answers, and what a calling service must answer its own caller for each. Source of truth for the conformance tests in the TS introspection client package (fleet-service, automation-service, st-gateway), agent-service (Go) and navigation-service (Java), which vendor this file verbatim. See ../docs/design/token-introspection.md and auth-design.md decision 21. DECIDED 2026-09-20, NOT SHIPPED: no service behaves this way yet — rollout is meta#80. Assertion vocabulary: a case is a route declaration, an inbound Authorization header, a stubbed center, and the expected outcome. `route.requires` is \"none\" (no credential declared), \"session\" (any verified session) or a scope literal. `expect.outcome` is \"proceed\" (the middleware ran the handler) or \"reject\". `expect.identity` is the {sub, kind, scopes} handed to the handler, or null for a visitor. `expect.centerCalls` is how many HTTP requests the client made to the center for this one inbound request — 0 and 1 are both assertions, and 2 fails. An unknown key in `expect` must fail the case rather than be skipped, or a copy that falls behind quietly checks less. No case may be satisfiable by an empty or absent answer: every rejection asserts its exact message, every proceed asserts the identity, and every case asserts the call count (meta#79).",
+  "$comment": "Canonical token-introspection conditions: what auth-service (the center) answers, and what a calling service must answer its own caller for each. Source of truth for the conformance tests in the TS introspection client package (fleet-service, automation-service, st-gateway), agent-service (Go) and navigation-service (Java), which vendor this file verbatim. See ../docs/design/token-introspection.md and auth-design.md decision 21. DECIDED 2026-09-20, NOT SHIPPED: no service behaves this way yet — rollout is meta#80. Assertion vocabulary: a case is a route declaration, an inbound Authorization header, a stubbed center, and the expected outcome. `route.requires` is \"none\" (no credential declared), \"session\" (any verified session) or a scope literal. `expect.outcome` is \"proceed\" (the middleware ran the handler) or \"reject\". `expect.identity` is the {sub, kind, scopes} handed to the handler, or null for a visitor; `kind` is the center's answer and must be used verbatim, never re-derived from the `sub` prefix, and `scopes` is the `scope` string split on whitespace RUNS with empties discarded, matching every verifier live today. `expect.centerCalls` is how many HTTP requests the client made to the center for this one inbound request — 0 and 1 are both assertions, and 2 fails. An unknown key in `expect` must fail the case rather than be skipped, or a copy that falls behind quietly checks less. No case may be satisfiable by an empty or absent answer: every rejection asserts its exact message, every proceed asserts the identity, and every case asserts the call count (meta#79).",
   "version": 1,
   "contract": {
     "endpoint": {
@@ -113,6 +113,51 @@
       }
     },
     {
+      "name": "session-route-with-no-header",
+      "why": "The middle tier: a route that needs a verified session and no particular scope — agent-service's live reads under decision 18. Nothing was presented, so 401 and the missing-token sentence, and the center is not asked. A client that folds `session` into `none` serves this request anonymously, which is the hole decision 18 exists to close.",
+      "route": { "method": "GET", "requires": "session" },
+      "request": { "authorization": null },
+      "center": { "notCalled": true },
+      "expect": {
+        "outcome": "reject",
+        "status": 401,
+        "message": "a bearer token is required",
+        "centerCalls": 0
+      }
+    },
+    {
+      "name": "session-route-with-inactive-token",
+      "why": "The same tier with a token that does not verify. 401 and the invalid-session sentence, not the missing-token one — something was presented and it was bad. A client that treats `session` as `none` proceeds here too, and an expired operator reads a guarded surface with no indication their credential died.",
+      "route": { "method": "GET", "requires": "session" },
+      "request": { "authorization": "Bearer expired.token.two" },
+      "center": { "status": 200, "body": "{\"active\":false}" },
+      "expect": {
+        "outcome": "reject",
+        "status": 401,
+        "message": "invalid or expired session",
+        "centerCalls": 1
+      }
+    },
+    {
+      "name": "session-route-with-scopeless-token",
+      "why": "The case that pins the tier as a tier. A verified session carrying NO scopes at all is allowed through, because the route asked for a session and nothing more — a guest operator who may watch but not act. A client that implements `session` as \"any scope will do\" rejects this; one that implements it as `none` cannot fail the two cases above. Also the empty-`scope` parse: the identity must carry an empty list, never a list holding one empty string.",
+      "route": { "method": "GET", "requires": "session" },
+      "request": { "authorization": "Bearer guest.token.one" },
+      "center": {
+        "status": 200,
+        "body": "{\"active\":true,\"sub\":\"user_31qP8k2cQeXampleGuest\",\"scope\":\"\",\"exp\":4102444800,\"kind\":\"operator\"}"
+      },
+      "expect": {
+        "outcome": "proceed",
+        "identity": {
+          "sub": "user_31qP8k2cQeXampleGuest",
+          "kind": "operator",
+          "scopes": []
+        },
+        "centerCalls": 1
+      }
+    },
+    {
       "name": "active-with-required-scope",
       "why": "The ordinary authorized mutation. Asserts the identity reaches the handler, not merely that the request was allowed: automation-service writes detail.actor from it and a middleware that authorizes without publishing the identity passes a status-only assertion.",
       "route": { "method": "POST", "requires": "fleet:control" },
@@ -168,6 +213,25 @@
       }
     },
     {
+      "name": "active-with-irregular-scope-whitespace",
+      "why": "`scope` is space-delimited by convention, not by guarantee, and the center returns it verbatim from the Clerk claim. All five verifiers live today split on whitespace RUNS and discard empties (`strings.Fields` in Go, `/\\s+/` in TS, `\\\\s+` in Java). A client that splits on a single space literal gets [\"fleet:control\", \"\", \"agent:reset\\tuniverse:refresh\", \"\"] here, fails to find the required scope at all, and answers 403 for a token that carries it. The leading run and the trailing space additionally catch a splitter that keeps empties — which the identity assertion catches even where the authorization check would have passed by accident.",
+      "route": { "method": "POST", "requires": "universe:refresh" },
+      "request": { "authorization": "Bearer operator.token.twelve" },
+      "center": {
+        "status": 200,
+        "body": "{\"active\":true,\"sub\":\"user_31qP8k2cQeXampleOperator\",\"scope\":\"fleet:control  agent:reset\\tuniverse:refresh \",\"exp\":4102444800,\"kind\":\"operator\"}"
+      },
+      "expect": {
+        "outcome": "proceed",
+        "identity": {
+          "sub": "user_31qP8k2cQeXampleOperator",
+          "kind": "operator",
+          "scopes": ["fleet:control", "agent:reset", "universe:refresh"]
+        },
+        "centerCalls": 1
+      }
+    },
+    {
       "name": "active-machine-kind",
       "why": "automation-service's M2M token (decision 19). It authorizes exactly like an operator's session — the scopes are baked into the token — but the handler must be able to tell the two apart: automation-service's knob-class fence restricts a machine caller to `policy` knobs. The discriminator is `kind`, never the presence of a header, because after decision 21 every caller presents one. A client that drops `kind` opens the alert and model knobs to the AI supervisor's path.",
       "route": { "method": "POST", "requires": "fleet:control" },
@@ -182,6 +246,25 @@
           "sub": "mch_31qP8k2cQeXampleMachine",
           "kind": "machine",
           "scopes": ["fleet:control", "agent:reset"]
+        },
+        "centerCalls": 1
+      }
+    },
+    {
+      "name": "kind-disagrees-with-sub-prefix",
+      "why": "The center's `kind` is the answer, and a client must not re-derive it. This pairing — a `user_` subject reported as `machine` — is deliberately impossible in production, because the center computes `kind` from that very prefix. It exists only to pin WHO OWNS THE RULE: every other case agrees with itself, so a client that kept `sub.startsWith(\"user_\")` passes all of them unchanged and this one fails. That is not hypothetical — it is exactly what st-gateway's deriver does today, and automation-service's knob-class fence keys on the result. If the center's convention ever changes (a third `kind`, a new Clerk subject prefix), one deploy of the center must be enough.",
+      "route": { "method": "POST", "requires": "fleet:control" },
+      "request": { "authorization": "Bearer disagreeing.token.one" },
+      "center": {
+        "status": 200,
+        "body": "{\"active\":true,\"sub\":\"user_31qP8k2cQeXampleOperator\",\"scope\":\"fleet:control\",\"exp\":4102444800,\"kind\":\"machine\"}"
+      },
+      "expect": {
+        "outcome": "proceed",
+        "identity": {
+          "sub": "user_31qP8k2cQeXampleOperator",
+          "kind": "machine",
+          "scopes": ["fleet:control"]
         },
         "centerCalls": 1
       }
@@ -319,6 +402,26 @@
         "body": "{\"active\":true,\"sub\":\"mch_31qP8k2cQeXampleMachine\",\"scope\":\"fleet:control agent:reset\",\"exp\":4102444800,\"kind\":\"machine\"}"
       },
       "expect": { "outcome": "lane", "lane": "background", "centerCalls": 1 }
+    },
+    {
+      "name": "gateway-kind-machine-with-user-subject",
+      "why": "Deliberately impossible in production — the center derives `kind` from the `sub` prefix, so the two can never disagree there — and the only case in this group that fails st-gateway's CURRENT deriver, which reads `sub.startsWith(\"user_\")` itself and would answer `interactive`. Every other gateway case agrees with itself and would pass unchanged, so without this one the migration is unverified. The lane follows `kind`; the gateway stops knowing Clerk's subject conventions (decision 21).",
+      "request": { "authorization": "Bearer disagreeing.token.one" },
+      "center": {
+        "status": 200,
+        "body": "{\"active\":true,\"sub\":\"user_31qP8k2cQeXampleOperator\",\"scope\":\"fleet:control\",\"exp\":4102444800,\"kind\":\"machine\"}"
+      },
+      "expect": { "outcome": "lane", "lane": "background", "centerCalls": 1 }
+    },
+    {
+      "name": "gateway-kind-operator-with-machine-subject",
+      "why": "The mirror, and the one that fails safe in the wrong direction: a client still reading the subject answers `background` here, which looks correct and is not — it is the dashboard silently queueing behind the autopilot, the exact silent failure algorithms.md warns about. Also impossible in production, and also here only to pin that `kind` is the authority.",
+      "request": { "authorization": "Bearer disagreeing.token.two" },
+      "center": {
+        "status": 200,
+        "body": "{\"active\":true,\"sub\":\"mch_31qP8k2cQeXampleMachine\",\"scope\":\"fleet:control\",\"exp\":4102444800,\"kind\":\"operator\"}"
+      },
+      "expect": { "outcome": "lane", "lane": "interactive", "centerCalls": 1 }
     },
     {
       "name": "gateway-inactive-token",

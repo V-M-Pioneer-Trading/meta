@@ -602,9 +602,11 @@ network-reachable by them too: **unreachable and secret-guarded today,
 secret-guarded alone afterwards**, which is exactly the posture this decision
 rejects. The owner accepted that on 2026-09-20; a second listener port would
 have avoided it and was declined as not worth building for an interim state.
-What keeps it small is that the vault secret stays with st-gateway alone —
-which is why decision 21's **separate** introspection secret is load-bearing
-rather than tidy. **The downgrade ends when the vault moves into st-gateway**,
+What keeps it small is that no container other than st-gateway receives the
+vault secret (auth-service excepted — it is the side that checks it); the rule
+is about containers, not stacks, since `agent-service/main.tf` already fetches
+it in order to deploy st-gateway. That is why decision 21's **separate**
+introspection secret is load-bearing rather than tidy. **The downgrade ends when the vault moves into st-gateway**,
 which deletes the token route altogether, and that move is deliberately not
 part of meta#80. **If it slips, the downgrade persists**; nothing else expires
 it. The firewall change itself is additive — a `RETURN` before the `DROP` —
@@ -1026,10 +1028,11 @@ Decision 4 was a bet that one small piece of verification code is cheap to
 carry in every service. Six of them later, the bet has visibly lost.
 
 - **Six hand-ported verifiers** — Go ×2 (agent-service, auth-service), TS ×3
-  (fleet-service, automation-service, st-gateway's lane deriver), Java ×1
-  (navigation-service) — plus st-gateway's separate `sub`-prefix convention.
-  They have drifted in error text, in whether an actor is recorded, and in
-  which guards exist at all
+  (fleet-service, automation-service, and st-gateway's lane deriver, which is
+  the sixth verifier rather than something extra: it runs the same RS256 check
+  and then reads the `sub` prefix, the one convention no other copy knows),
+  Java ×1 (navigation-service). They have drifted in error text, in whether an
+  actor is recorded, and in which guards exist at all
   ([meta#74](https://github.com/V-M-Pioneer-Trading/meta/issues/74)).
   automation-service's 403 still names the missing scope; the other four
   refuse to. Each drift was correct in its own repository and wrong across the
@@ -1185,11 +1188,15 @@ route on the listener auth-service already has.
 - **It ends when the vault moves into st-gateway**, which deletes the token
   route altogether (see *Not in this epic*). **If that move slips, the
   downgrade persists** — it has no other exit, and nothing expires it.
-- What keeps it small: the vault secret is held by **st-gateway alone**. That
-  is exactly what makes the **separate introspection secret load-bearing rather
-  than a nicety** — one secret for two purposes would hand every service the
-  key to the route that returns the game token, and the downgrade would stop
-  being small. Never reuse the vault's secret; never pass it to another stack.
+- What keeps it small: **no container other than st-gateway holds the vault
+  secret** — auth-service excepted, since it is the side that checks it. The
+  rule is about containers, not about Terraform: `agent-service/main.tf`
+  already fetches `AUTH_SERVICE_SHARED_SECRET` today, because that stack is
+  where st-gateway is deployed from. What must never happen is a *third*
+  container receiving it. That is exactly what makes the **separate
+  introspection secret load-bearing rather than a nicety** — one secret for
+  both purposes would hand every service the key to the route that returns the
+  game token, and the downgrade would stop being small.
 - The firewall change is **additive only**: one `RETURN` for
   `-p tcp --dport <port>` in `authnet-out-guard`, before the `DROP`. The August
   outages recorded in decision 9 came from an over-broad `DROP`; a permitting
@@ -1228,10 +1235,14 @@ most. Rollback is redeploying the previous image tag.
   where it is used. Agreed in principle. It ends the temporary isolation
   downgrade above, and removes the token route, the vault secret, both iptables
   chains and the poll/fetch cycle. It is a **separate feature after this one**:
-  it ports ~930 lines of reset-recovery Go that
+  it ports everything in the vault except the Clerk verifier — about 930 lines
+  of Go, measured 2026-09-20 (1,114 non-test lines, less `api/auth.go`'s 180),
+  of which the reset-recovery path proper (poller, SpaceTraders client, state
+  machine, credential store) is about 540 — and
   [decision 10](#10-verification-is-networkless-and-local-development-uses-its-own-keypair)
-  already records as unexercisable locally, and mixing that with a brand-new
-  hot-path dependency would make a production failure unattributable.
+  already records that path as unexercisable locally. Mixing it with a
+  brand-new hot-path dependency would make a production failure
+  unattributable.
 - **The [meta#58](https://github.com/V-M-Pioneer-Trading/meta/issues/58)
   follow-up.** Once the host is on bridges and the vault has moved, a proxy
   doing `forward_auth` with identity headers could delete the per-language
@@ -1385,8 +1396,10 @@ no shared code — and can land at any point.
 - **Moving the credential vault into st-gateway**, so the game token lives only
   where it is used. Agreed in principle, deliberately **not** part of
   [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80): it ports
-  ~930 lines of reset-recovery Go that cannot be exercised locally (decision
-  10's known gap), and doing that alongside a new hot-path dependency would
+  everything in the vault except the Clerk verifier — about 930 of its 1,114
+  non-test Go lines, of which the reset-recovery path proper is about 540 and
+  cannot be exercised locally (decision 10's known gap) — and doing that
+  alongside a new hot-path dependency would
   make a production failure unattributable. It is also the **only exit** from
   the isolation downgrade
   [decision 21](#21-one-verifier-every-service-asks-auth-service-what-a-token-carries)

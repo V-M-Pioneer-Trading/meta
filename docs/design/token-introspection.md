@@ -114,7 +114,7 @@ reason.
 ## Conformance
 
 [`fixtures/introspection.json`](../../fixtures/introspection.json) is the
-source of truth: seventeen conditions for a calling service, plus seven for
+source of truth: twenty-two conditions for a calling service, plus nine for
 st-gateway's lane policy, each with the center response that produces it and
 the answer expected. It also fixes the names three implementations have to
 agree on — the endpoint, the form field, the `X-Introspection-Secret` header,
@@ -148,6 +148,26 @@ message must **not** contain; every success asserts the **identity** handed to
 the handler rather than merely a 2xx; and every case asserts **how many times
 the center was called**, so that `0` and `1` are both real assertions and a
 helpful retry loop fails.
+
+**Three cases exist because every other case agrees with itself.** A fixture
+whose data is always internally consistent cannot catch a client that computes
+an answer it was given.
+
+- **`kind` is the center's answer, never re-derived.** Two cases (one per
+  group) report a `user_` subject as `machine`, and one reports the mirror.
+  That pairing is impossible in production — the center computes `kind` from
+  the subject prefix — and exists only to pin who owns the rule. Without it, a
+  client that kept `sub.startsWith("user_")`, which is precisely what
+  st-gateway does today, passes every other case unchanged.
+- **The session tier is a tier.** Three cases cover a route that requires a
+  verified session and no particular scope: no header, an inactive token, and
+  an active token carrying **no scopes at all**, which must be allowed. A
+  client that folds this tier into "public" passes the first two only by
+  accident; one that folds it into "any scope" fails the third.
+- **`scope` is split on whitespace runs.** One case carries a double space, a
+  tab and a trailing space, matching what all five verifiers do today
+  (`strings.Fields`, `/\s+/`, `\\s+`). A client splitting on a single space
+  literal cannot find the required scope at all.
 
 Local additions belong in the service's own tests. This file holds only
 conditions every implementation must answer identically.
