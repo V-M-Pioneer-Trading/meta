@@ -24,18 +24,20 @@ to `POST /auth/v1/introspect` and acts on the answer.
 
 | Situation | Status | Message | Center called |
 |---|---|---|---|
+| Non-`GET` route declaring no scope | **500** | `this route declares no required scope` | **no** |
 | No `Authorization`, route declares nothing and is a `GET` | — | proceeds as a visitor | **no** |
 | No `Authorization`, route declares a scope or a session | **401** | `a bearer token is required` | **no** |
 | A header that is not `Bearer <something>` | **401** | `a bearer token is required` | **no** |
-| Non-`GET` route declaring no scope | **403** | `this action requires a scope this session does not carry` | **no** |
 | `{"active": false}` | **401** | `invalid or expired session` | yes |
 | Active, route's scope missing | **403** | `this action requires a scope this session does not carry` | yes |
 | Active, route's scope present | — | proceeds with `{sub, kind, scopes}` | yes |
-| Center unreachable, timed out, non-2xx, malformed, or rejecting our secret | **503** | `the authentication service did not answer, so this request cannot be authorized` | yes |
+| Center unreachable, timed out, non-2xx, malformed, or rejecting our secret | **503** | `the authentication service could not process this request` | yes |
 
-Every body uses the family's `{"error":{"message":…}}` envelope. The first
-three messages are the ones four services answer with today and are preserved
-byte for byte; the `503` sentence is new.
+The rows are in evaluation order: the first is decided before the
+`Authorization` header is read, which is why it is first. Every body uses the
+family's `{"error":{"message":…}}` envelope. The `401` and `403` messages are
+the ones four services answer with today and are preserved byte for byte; the
+`500` and `503` sentences are new, both fixed by the owner on 2026-09-20.
 
 **Three rules are worth stating on their own, because each one is a mistake
 someone will otherwise make:**
@@ -45,16 +47,27 @@ someone will otherwise make:**
   including a `GET` that would have been served anonymously. Downgrading hides
   an expired session from the operator holding it and hides a misconfigured
   trust anchor from everyone.
-- **Default-deny on mutating methods.** A non-`GET` route that declares no
-  scope is rejected, not served. This is the part that makes
+- **Default-deny on mutating methods, and it is a `500`.** A non-`GET` route
+  that declares no scope is refused, not served. This is the part that makes
   [meta#71](https://github.com/V-M-Pioneer-Trading/meta/issues/71) —
   an unauthenticated `POST` nobody remembered to guard — structurally
   impossible rather than merely unlikely, and it is why the middleware is
-  global rather than a decoration applied route by route.
+  global rather than a decoration applied route by route. **Not a `403`**: the
+  caller has done nothing wrong and can do nothing about it, and
+  automation-service maps a `403` to a terminal `credentials` verdict, so a
+  `403` would abandon a target and send the operator to check Clerk scopes for
+  a defect in our routing table. The rule is applied **before** the header is
+  read, so a valid token, an expired one and no token at all all get the same
+  answer.
 - **The center's `401` is about us, not about the caller.** It means our
   introspection secret is wrong, missing or rotated. Relaying it as a `401`
   tells an operator to sign in again, forever, against a service that cannot
-  accept them. It is a `503`.
+  accept them. It is a `503` — and so is a center that answers `500`, or
+  answers a body we cannot parse. The sentence says *could not process* rather
+  than anything about answering precisely because three of the five conditions
+  it covers are answers. It must also stay distinct from st-gateway's
+  `SpaceTraders credential not configured`, which is the one `503` sentence
+  automation-service's classifier treats as "an operator must act".
 
 ## Why asking, rather than each service verifying
 
@@ -114,7 +127,7 @@ reason.
 ## Conformance
 
 [`fixtures/introspection.json`](../../fixtures/introspection.json) is the
-source of truth: twenty-two conditions for a calling service, plus nine for
+source of truth: twenty-four conditions for a calling service, plus nine for
 st-gateway's lane policy, each with the center response that produces it and
 the answer expected. It also fixes the names three implementations have to
 agree on — the endpoint, the form field, the `X-Introspection-Secret` header,
@@ -149,9 +162,16 @@ the handler rather than merely a 2xx; and every case asserts **how many times
 the center was called**, so that `0` and `1` are both real assertions and a
 helpful retry loop fails.
 
-**Three cases exist because every other case agrees with itself.** A fixture
-whose data is always internally consistent cannot catch a client that computes
-an answer it was given.
+**Rule order is tested, not assumed.** The scopeless mutating route appears
+three times — with a valid token, with an inactive one, and with no header at
+all — because the rule is only right if it is applied first. A client that
+reads the header first answers `401` for the third and introspects for the
+second, and both look reasonable until an operator is sent to check their
+Clerk scopes over a routing-table defect.
+
+**Three more cases exist because every other case agrees with itself.** A
+fixture whose data is always internally consistent cannot catch a client that
+computes an answer it was given.
 
 - **`kind` is the center's answer, never re-derived.** Two cases (one per
   group) report a `user_` subject as `machine`, and one reports the mirror.

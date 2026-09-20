@@ -850,8 +850,8 @@ a signed-in session with no particular scope, its mutations behind
 is **who answers "is this session valid, and what scopes does it carry"**: the
 center rather than the service's own verifier. A tier is a property of a route
 and stays where the route is. The one visible addition is default-deny: after
-21 a mutating route that declares no scope is rejected rather than served,
-which is what makes another
+21 a mutating route that declares no scope answers `500 this route declares no
+required scope` instead of being served, which is what makes another
 [meta#71](https://github.com/V-M-Pioneer-Trading/meta/issues/71) structurally
 impossible. Rollout:
 [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80).*
@@ -1049,8 +1049,8 @@ carry in every service. Six of them later, the bet has visibly lost.
 
 The fix that makes it structural is not the hop by itself, it is the hop plus
 **default-deny on mutating methods**: a non-`GET` route that declares no scope
-is rejected rather than served. A future #71 stops being a thing someone has to
-notice.
+answers `500`, before it looks at the credential, rather than serving the
+request. A future #71 stops being a thing someone has to notice.
 
 #### Accepted costs
 
@@ -1119,20 +1119,42 @@ in this epic* for the reasoning and for what would reopen it.
 
 One **global** middleware per service — not a per-route decoration — and
 **default-deny on mutating methods**: a non-`GET` route that declares no scope
-is rejected. Scopes are declared at the route.
+is refused. Scopes are declared at the route.
+
+Rows are evaluated in this order, and the first one is first for a reason:
 
 | Situation | Answer |
 |---|---|
+| Non-`GET` route declaring no scope | `500 this route declares no required scope`. **Before the header is looked at**, so the answer is the same with a valid token, a bad one, and none at all. **No call to the center.** |
 | No `Authorization` header, public `GET` | proceed as a visitor. **No call to the center.** |
 | No `Authorization` header, guarded route | `401 a bearer token is required` |
 | Header present, `active: false` | `401 invalid or expired session`, on every method. A bad credential is **never** downgraded to visitor. |
 | Active, required scope missing | `403 this action requires a scope this session does not carry` — generic, and the scope is **not** named |
-| Center unreachable, times out, answers non-2xx, or rejects our secret | `503`, one fixed sentence, in the `{"error":{"message":…}}` envelope |
+| Center unreachable, times out, answers non-2xx or malformed, or rejects our secret | `503 the authentication service could not process this request` |
 
-The first three sentences are the ones four services already answer with; they
-are preserved byte for byte, and automation-service's scope-naming 403
-converges on the generic one as it migrates. The exact strings, and the `503`
-sentence, live in
+Every body uses the `{"error":{"message":…}}` envelope.
+
+**The first row was added during step 1** (owner's decision, 2026-09-20); the
+epic's own table had five rows and left the status of a scopeless mutating
+route unstated. It is a **`500`, not a `403`**, because it reports *our* defect
+and not the caller's: a `403` says "your session lacks a permission", which is
+never true here and is unfixable by whoever reads it, and automation-service
+maps a `403` to a terminal `credentials` verdict — so it would abandon a target
+and send the operator to check Clerk scopes for a bug in our own routing table.
+Evaluating it before the header is what makes the answer honest: the credential
+a caller did or did not bring says nothing about a route that declares nothing.
+
+The `401` and `403` sentences are the ones four services already answer with;
+they are preserved byte for byte, and automation-service's scope-naming `403`
+converges on the generic one as it migrates. The `500` and `503` sentences are
+new. The `503` deliberately says *could not process* rather than anything about
+answering, because it covers a center that did answer — with a `500`, with an
+unparseable body, or with a `401` about our own caller secret — as well as one
+that did not; and it must not collide with st-gateway's `SpaceTraders
+credential not configured`, the one `503` sentence automation-service's
+classifier reads to mean an operator has to act.
+
+Every string lives in
 [`fixtures/introspection.json`](../../fixtures/introspection.json) — the same
 vendored-fixture pattern as
 [upstream-errors.md](upstream-errors.md), and for the same reason: three

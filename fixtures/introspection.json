@@ -20,9 +20,10 @@
       "missingToken": "a bearer token is required",
       "invalidSession": "invalid or expired session",
       "missingScope": "this action requires a scope this session does not carry",
-      "centerUnavailable": "the authentication service did not answer, so this request cannot be authorized"
+      "undeclaredRoute": "this route declares no required scope",
+      "centerUnavailable": "the authentication service could not process this request"
     },
-    "$messagesComment": "The first three are quoted from the verifiers live today in agent-service/src/api/auth.go, fleet-service/src/auth.ts, auth-service/src/api/auth.go and navigation-service ClerkAuthFilter.java, and must stay byte-identical — the family envelope and these exact sentences are why command-interface needs one parser for every backend's auth rejections, including navigation-service, which emits RFC 9457 everywhere else and makes a deliberate exception here. automation-service's 403 names the scope today; it converges on `missingScope` as it migrates. The fourth is new with decision 21.",
+    "$messagesComment": "The first three are quoted from the verifiers live today in agent-service/src/api/auth.go, fleet-service/src/auth.ts, auth-service/src/api/auth.go and navigation-service ClerkAuthFilter.java, and must stay byte-identical — the family envelope and these exact sentences are why command-interface needs one parser for every backend's auth rejections, including navigation-service, which emits RFC 9457 everywhere else and makes a deliberate exception here. automation-service's 403 names the scope today; it converges on `missingScope` as it migrates. The last two are new with decision 21, both fixed by the owner on 2026-09-20. `undeclaredRoute` is a 500, not a 403, because it reports our own routing-table defect rather than anything the caller can fix. `centerUnavailable` covers all five failure conditions — unreachable, timed out, non-2xx, malformed body, and the center rejecting OUR caller secret — which is why it says `could not process` rather than anything about answering: in three of the five the center did answer. It must not collide with st-gateway's `SpaceTraders credential not configured`, the one 503 sentence automation-service's failure classifier keys on to mean an operator must act.",
     "$tokenComment": "A calling service never parses, decodes or validates the token. The strings below are deliberately not valid JWTs: a client that looks inside one, or rejects one for being unparseable, fails these cases by answering before the center is asked."
   },
   "cases": [
@@ -271,14 +272,40 @@
     },
     {
       "name": "mutating-route-with-no-declared-scope",
-      "why": "Default-deny, and the whole structural point of decision 21. A non-GET route that declares nothing is rejected even for a token that would satisfy any scope asked of it — that is what makes another meta#71 (an unauthenticated POST nobody remembered to guard) impossible rather than merely unlikely. The center is NOT called: a route that can never be authorized has nothing to verify, and answering before the hop keeps a misdeclared route from becoming load on the center. Asserting 403 with the generic sentence also means a misconfiguration tells the caller nothing it could not already guess.",
+      "why": "Default-deny, and the whole structural point of decision 21: a non-GET route that declares nothing is refused even for a token that would satisfy any scope asked of it, which is what makes another meta#71 (an unauthenticated POST nobody remembered to guard) impossible rather than merely unlikely. It is a 500 and not a 403 (owner's decision, 2026-09-20) because it is OUR defect and the caller can never fix it: automation-service maps a 403 to a terminal `credentials` verdict, so a 403 here would abandon the target and send the operator to check Clerk scopes for a bug in our own routing table. The center is not called — a route that can never be authorized has nothing to verify, and a misdeclared route must not become load on the center.",
       "route": { "method": "POST", "requires": "none" },
       "request": { "authorization": "Bearer operator.token.five" },
       "center": { "notCalled": true },
       "expect": {
         "outcome": "reject",
-        "status": 403,
-        "message": "this action requires a scope this session does not carry",
+        "status": 500,
+        "message": "this route declares no required scope",
+        "centerCalls": 0
+      }
+    },
+    {
+      "name": "mutating-route-with-no-declared-scope-and-no-header",
+      "why": "The same 500, with nothing presented. This is the rule-ORDER assertion: default-deny is evaluated BEFORE the Authorization header is looked at, so a client that checks the header first answers 401 `a bearer token is required` here and fails. Order matters because the two answers send an operator to different places — 401 says \"sign in\", 500 says \"this route is misdeclared\" — and the credential a caller did or did not bring says nothing about a route that declares no scope.",
+      "route": { "method": "POST", "requires": "none" },
+      "request": { "authorization": null },
+      "center": { "notCalled": true },
+      "expect": {
+        "outcome": "reject",
+        "status": 500,
+        "message": "this route declares no required scope",
+        "centerCalls": 0
+      }
+    },
+    {
+      "name": "mutating-route-with-no-declared-scope-and-inactive-token",
+      "why": "The third arm of the same rule, and the one that also pins `centerCalls: 0`. A client that introspected first would get `active:false` back and answer 401 `invalid or expired session` — a true statement about the token and the wrong answer about the request, plus a call to the center that a misdeclared route should never be able to generate. The answer is identical for a valid token, an invalid one and none at all.",
+      "route": { "method": "POST", "requires": "none" },
+      "request": { "authorization": "Bearer expired.token.three" },
+      "center": { "notCalled": true },
+      "expect": {
+        "outcome": "reject",
+        "status": 500,
+        "message": "this route declares no required scope",
         "centerCalls": 0
       }
     },
@@ -295,7 +322,7 @@
       "expect": {
         "outcome": "reject",
         "status": 503,
-        "message": "the authentication service did not answer, so this request cannot be authorized",
+        "message": "the authentication service could not process this request",
         "centerCalls": 1,
         "maxElapsedMs": 2000
       }
@@ -309,7 +336,7 @@
       "expect": {
         "outcome": "reject",
         "status": 503,
-        "message": "the authentication service did not answer, so this request cannot be authorized",
+        "message": "the authentication service could not process this request",
         "centerCalls": 1
       }
     },
@@ -322,7 +349,7 @@
       "expect": {
         "outcome": "reject",
         "status": 503,
-        "message": "the authentication service did not answer, so this request cannot be authorized",
+        "message": "the authentication service could not process this request",
         "messageMustNotContain": ["sql", "database"],
         "centerCalls": 1
       }
@@ -336,7 +363,7 @@
       "expect": {
         "outcome": "reject",
         "status": 503,
-        "message": "the authentication service did not answer, so this request cannot be authorized",
+        "message": "the authentication service could not process this request",
         "centerCalls": 1
       }
     },
@@ -349,7 +376,7 @@
       "expect": {
         "outcome": "reject",
         "status": 503,
-        "message": "the authentication service did not answer, so this request cannot be authorized",
+        "message": "the authentication service could not process this request",
         "centerCalls": 1
       }
     },
@@ -362,7 +389,7 @@
       "expect": {
         "outcome": "reject",
         "status": 503,
-        "message": "the authentication service did not answer, so this request cannot be authorized",
+        "message": "the authentication service could not process this request",
         "centerCalls": 1
       }
     }
