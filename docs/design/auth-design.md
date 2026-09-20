@@ -552,9 +552,11 @@ namespace, so "only st-gateway can reach auth-service" is otherwise
 unenforceable.
 
 - **`authnet`**, a private Docker bridge holding auth-service, st-gateway and
-  Caddy. auth-service publishes **no host port**. st-gateway additionally
-  publishes `-p 127.0.0.1:3002:3002` so the four host-network services keep
-  reaching it unchanged.
+  Caddy. As decided here, auth-service publishes **no host port**. st-gateway
+  additionally publishes `-p 127.0.0.1:3002:3002` so the four host-network
+  services keep reaching it unchanged. (Decision 21 changes this for
+  auth-service; see the 2026-09-20 and 2026-09-21 notes at the end of this
+  decision for what is live today.)
 - **Caddy is on `authnet` deliberately.** The Reset Agent flow carries the
   account token from the browser, and routing it through any host-network service
   would expose that credential to a service that has no business seeing it.
@@ -615,6 +617,19 @@ decision still governs, and `auth-service-authnet-guard` is not touched. As of
 2026-09-20 auth-service still publishes no host port and both chains are
 unchanged. Rollout:
 [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80), step 3.*
+
+*Note, 2026-09-21 — the change above is written but **not yet in effect on the
+host**.
+[infrastructure#86](https://github.com/V-M-Pioneer-Trading/infrastructure/pull/86)
+adds `-p 127.0.0.1:<port>:<port>` to auth-service's `docker run` — loopback
+only, never `0.0.0.0` — and one `RETURN` to `authnet-out-guard` before its
+`DROP`, for `-p tcp --dport <port>`. `auth-service-authnet-guard` is untouched,
+so nothing forwarded from off-bridge gains anything. `terraform apply` on that
+stack is manual and is the owner's, so the merge of that PR does not change the
+host: until the apply, auth-service publishes no host port and both chains are
+as described above; after it, the port is published on loopback and
+`authnet-out-guard` has three rules instead of two. Whoever reads this should
+check the live host rather than infer the state from this file.*
 
 ### 10. Verification is networkless, and local development uses its own keypair
 
