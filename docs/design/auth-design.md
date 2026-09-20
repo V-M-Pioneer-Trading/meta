@@ -217,7 +217,7 @@ trust level rather than reversibility.*
 
 | Scope | Covers | Blast radius |
 |---|---|---|
-| `fleet:control` | arm, pause, abort, replan, knob writes | reversible |
+| `fleet:control` | arm, pause, abort, replan, knob writes; every ship action in fleet-service; and in agent-service, contract accept/fulfill, ship and cargo purchases, and cargo sells | reversible |
 | `agent:reset` | `POST /register` (Reset Agent), `POST /agent-token` (Restore Token) | **irreversible / credential-bearing** |
 
 `agent:reset` is fenced separately because it is the only operation that can
@@ -353,6 +353,15 @@ client method in four languages, and `AutopilotState.token` are deleted;
 never rejected. The same pass deleted the dead `X-Priority` path end to end: the
 calling services now forward the verified Clerk session to st-gateway instead,
 which is what makes decision 2's priority derivation real.*
+
+*navigation-service is the one that is not in that list. Its Stage 5 work landed
+under decision 20 ([navigation-service#15](https://github.com/V-M-Pioneer-Trading/navigation-service/pull/15)),
+which dropped the game token and `X-Priority` but did not add the forwarding in
+their place; that followed later, separately from this pass
+([navigation-service#19](https://github.com/V-M-Pioneer-Trading/navigation-service/pull/19)). Until it did, every
+one of its calls queued as `background` with no error to say so — exactly the
+silent failure [algorithms.md](../algorithms.md#the-gateway-token-bucket-and-priority-queue)
+warns a backend can cause by verifying a session and then not forwarding it.*
 
 ### 6. The account token is persisted, and the fleet recovers unattended
 
@@ -846,6 +855,14 @@ real machine's secret key was rotated once after production provisioning
 to close the exposure window from having passed through a terminal during
 setup.*
 
+*Forward pointer: half of the chosen fix is gone. The dual-header scheme this
+decision completes was deleted two weeks later by
+[decision 5](#5-st-gateway-injects-the-agent-token-nothing-else-holds-it), so
+`gameClients.ts` sends the M2M JWT on `Authorization` and no game credential at
+all — there is no `X-SpaceTraders-Token` anywhere any more. The M2M token itself
+is untouched: it answers "which headless caller is this", which injection never
+addressed, which is why this decision survives increment 3 intact.*
+
 ### 20. `universe:refresh`: a third scope, for spending the rate budget without moving the fleet
 
 navigation-service's four `POST …/refresh` routes force a live re-walk of
@@ -970,10 +987,12 @@ fixed.
    bridge, the two iptables chains (decision 9 — read the scoping warning there
    before touching them), and the shared secret created out of band with
    `aws ssm put-parameter`.
-4. **Documentation.** Split the *"No service stores a token"* claim in
-   `architecture.md` per decision 6; correct
-   [autopilot-spec.md](autopilot-spec.md)'s account/agent token confusion; add
-   the Caddy topology missing from `operations.md`.
+4. **Documentation.** ✅ Done — the *"No service stores a token"* claim in
+   `architecture.md` is split per decision 6; the Caddy topology `operations.md`
+   was missing is in its production-deployment section; and
+   [autopilot-spec.md](autopilot-spec.md)'s account/agent token confusion is
+   corrected in place, with a dated note saying what was changed rather than a
+   silent rewrite of a frozen record.
 
 **stagehopper is an independent stream** — separate tenant, separate repository,
 no shared code — and can land at any point.

@@ -2,6 +2,8 @@
 
 *Synthesized from autopilot-design.md and design interviews, 2026-07-17. Triage: `ready-for-agent`. Suggested tracker home: `V-M-Pioneer-Trading/meta` (cross-cutting).*
 
+*Editorial correction, 2026-09-10: this record had the operator arming autopilot by pasting the **account** token — in Solution below, and in user story 2. By the glossary in [CONTEXT.md](../../CONTEXT.md) the account token only registers a new agent after a universe reset and cannot drive a ship; the credential meant was the **agent** token, and the term is corrected in both places. Nothing else in this record is rewritten — the paste-to-arm flow it describes was itself superseded by [auth-design.md](auth-design.md) decision 5, which took the game token out of the browser entirely.*
+
 ## Problem Statement
 
 Running the SpaceTraders enterprise today requires constant manual attention. Every mining run, contract delivery, refuel, and market sale is triggered by hand through the command-interface UI. The operator cannot step away: ships sit idle the moment a task completes, contracts expire unevaluated, and market knowledge goes stale. On top of that, the three backend services call the SpaceTraders API independently with no shared rate limiting, so any concurrent activity risks 429 errors (meta issue #1).
@@ -16,12 +18,12 @@ A new automation-service runs a central planner that continuously assigns each s
 
 A separate ai-service watches the operation: deterministic health checks in automation-service raise anomaly events (webhook + hourly digest pull), and the ai-service runs an OpenAI-backed tool loop that may adjust bounded planner parameters and trigger replans — never drive ships directly. A new MCP server exposes the same control surface to interactive clients.
 
-The operator arms autopilot by pasting the account token in the UI, watches a bridge-view dashboard, and can pause or abort at any time.
+The operator arms autopilot by pasting the agent token in the UI, watches a bridge-view dashboard, and can pause or abort at any time.
 
 ## User Stories
 
 1. As a fleet operator, I want a single autopilot on/off switch in the UI, so that my enterprise runs unattended once I turn it on.
-2. As a fleet operator, I want to arm autopilot by pasting my account token (held in memory only), so that no service persists my credentials.
+2. As a fleet operator, I want to arm autopilot by pasting my agent token (held in memory only), so that no service persists my credentials.
 3. As a fleet operator, I want a pause mode that lets ships finish their current step before idling, so that I can halt operations without stranding cargo mid-task.
 4. As a fleet operator, I want an abort mode that stops all dispatching immediately, so that I have a hard kill switch when something goes wrong.
 5. As a fleet operator, I want the mining loop automated end-to-end (travel, survey, extract, refuel, sell at the best nearby market), so that mining income continues without my input.
@@ -63,7 +65,7 @@ The operator arms autopilot by pasting the account token in the UI, watches a br
 - Planner timing: event-driven single-ship assignment on task completion/failure; full-fleet replan on knob change, anomaly, or ~5-minute interval, debounced to ≥30 s. No preemption — tasks are short and bounded; abort is the only interrupt.
 - v1 loops: mining, contracts, market intel/scouting. (Expansion, arbitrage, multi-system are v2 — see Out of Scope.)
 - Persistence: one Postgres database for automation-service — plan and task assignments, per-ship FSM state, knob table (value + default + min/max), append-only event/decision log, metric rollups.
-- Anomaly detection: six deterministic checks, each an AI-tunable bounded knob — ship idle >10 min; fleet profit/hour <50% of 6 h rolling average; ≥3 consecutive task failures on one ship; ST error rate >10% over 5 min; credits net-flat over 2 h; market intel staleness over threshold for markets in active use.
+- Anomaly detection: six deterministic checks, each an AI-tunable bounded knob — ship idle >10 min; fleet profit/hour <50% of 6 h rolling average; ≥3 consecutive task failures on one ship; ST error rate >10% over 5 min; credits net-flat over 2 h; market intel staleness over threshold for markets in active use. *(Shipped as five: the profit-collapse and net-flat-credits checks merged into one `earnings_stalled`, both conditions still separately tunable.)*
 - Anomaly transport: automation-service persists the anomaly, then POSTs a webhook to ai-service with retry/backoff and a dedupe key; ai-service also pulls an event-log digest on an hourly scheduled review. No message broker.
 - AI runner: ai-service composes context (anomaly, recent events, current knobs) and runs a short OpenAI-API tool-use loop ending in bounded knob writes and/or a replan trigger, plus a rationale appended to the event log. The deterministic core is authoritative; AI outages degrade to "no tuning", never "no fleet".
 - Auth: token pasted in the UI to arm autopilot, held in memory by automation-service and forwarded as Bearer downstream; restart disarms. Existing pass-through auth unchanged.

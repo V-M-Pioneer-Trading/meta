@@ -56,7 +56,7 @@ For now the user pastes the token into the UI to arm autopilot; automation-servi
 
 ### 5. V1 loops: mining, contracts, market intel
 
-- **Mining loop** — travel → survey → extract → refuel → sell at best nearby market. POC-proven, first to automate end-to-end.
+- **Mining loop** — travel → survey → extract → refuel → sell at best nearby market. POC-proven, first to automate end-to-end. *(Shipped with the refuel after the sell rather than before it: a full hold can take several goods to several markets, so the tank is topped up once the hold is empty and the ship is about to be handed back to the planner.)*
 - **Contract loop** — deterministic profitability evaluation → accept → procure/mine → deliver → fulfill.
 - **Market intel / scouting** — ships refresh market prices into the navigation-service cache; without fresh data the other loops decide blind.
 
@@ -90,6 +90,8 @@ The AI may adjust planner parameters (weights, market blacklists, role mix, loop
 4. ST error rate > 10% over 5 min
 5. Credits net-flat over 2h
 6. Market intel staleness above threshold for markets in active use
+
+*(Shipped as five: 2 and 5 measure one thing from two angles — a fleet that stops earning trips both — so they merged into a single `earnings_stalled` check whose conditions stay separately tunable, and which later gained a third, absolute one, `no_earnings`. See [algorithms.md](../algorithms.md#anomaly-detection).)*
 
 **Runner: ai-service calls the OpenAI API.** On anomaly/review, ai-service composes context (anomaly + recent event log + current knobs) and runs a short OpenAI-backed tool-use loop, ending with knob adjustments/replan trigger and a written rationale appended to the event log.
 
