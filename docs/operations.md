@@ -95,10 +95,13 @@ curl -s -o /dev/null -w '%{http_code} %{content_type}\n' \
 A real route answers `application/json`; a missing one answers `text/html` with
 the same 200.
 
-Curling an authenticated route needs a token, and locally there is exactly one
-way to get one: every backend verifies against the committed development
-keypair in `dev-keys/`, which compose mounts into all of them, and
-`node scripts/mint-dev-token.mjs` signs a token against its private half. See
+Curling an authenticated route needs a token. Locally, every backend that
+verifies a Clerk session checks it against the committed development keypair in
+`dev-keys/`, which compose mounts into each of them, and
+`node scripts/mint-dev-token.mjs` signs a token against its private half. That is
+every backend but ai-service, which verifies nothing and gets no mount. The one
+alternative is setting `CLERK_JWT_KEY` in `.env` to a real Clerk instance's
+public key, which overrides the mounted file and means signing in for real. See
 [dev-keys/README.md](../dev-keys/README.md) for why that key is committed, why
 it is safe, and how to narrow the scopes it carries.
 
@@ -141,8 +144,8 @@ graph TD
     NAV -.->|"ST_GATEWAY_URL=localhost:3002"| GATEWAY
     AGENT -.->|"ST_GATEWAY_URL=localhost:3002"| GATEWAY
     FLEET -.->|"ST_GATEWAY_URL=localhost:3002"| GATEWAY
-    AUTOMATION -.->|"ST_GATEWAY_URL=localhost:3002"| GATEWAY
-    AUTH -.->|"agent token fetch"| GATEWAY
+    GATEWAY -.->|"agent token fetch"| AUTH
+    AUTH -.->|"reset polling, register<br/>ST_GATEWAY_URL=st-gateway:3002"| GATEWAY
 
     subgraph EC2["shared EC2 host (SG scoped to CloudFront IPs)"]
         subgraph HOSTNET["--network host"]
@@ -166,9 +169,10 @@ graph TD
 `authnet` bridge (auth-design decision 9). The seam between them is deliberate
 and asymmetric:
 
-- st-gateway publishes `-p 127.0.0.1:3002:3002`, so the four host-network
-  services reach it at the same `localhost:3002` they always used — no change
-  was needed in any of them.
+- st-gateway publishes `-p 127.0.0.1:3002:3002`, so the three host-network
+  services that call it (navigation-, agent- and fleet-service) reach it at the
+  same `localhost:3002` they always used — no change was needed in any of
+  them. automation-service, the fourth, never calls the gateway at all.
 - Caddy, being on the bridge, cannot use `localhost` to reach the four
   host-network services — inside a bridged container that means the container
   itself. It uses `host.docker.internal` (via `--add-host
@@ -209,8 +213,9 @@ below.
   gone; the quota is why the replacement is still one rule rather than
   several.
 - **st-gateway has no CloudFront origin** — internal-only by design, it's
-  only ever called server-to-server (every other backend's
-  `ST_GATEWAY_URL=http://localhost:3002`) as "the only door to SpaceTraders."
+  only ever called server-to-server (navigation-, agent- and fleet-service at
+  `ST_GATEWAY_URL=http://localhost:3002`, auth-service over the bridge at
+  `http://st-gateway:3002`; automation-service never calls it) as "the only door to SpaceTraders."
   It was browser-reachable in production until the `authnet` move: its port
   fell inside the old 80–8080 range, so nothing at the network layer blocked
   it. It now publishes on `127.0.0.1` only, and the range that exposed it no
@@ -247,7 +252,7 @@ passing health check regardless of whether the backend is actually up.
 
 command-interface's `SystemStatus` panel (`src/api/healthService.js`) polls
 `/api/<service>/health` directly from the browser, once per monitored
-service, unauthenticated, before and after login — see `MONITORED_SERVICES`
+service, unauthenticated, before and after login — see `SERVICE_DEFINITIONS`
 for the exact path per service. CloudFront
 (`mradomsky/infrastructure`, `projects/spacetraders/main.tf`) has a matching
 `ordered_cache_behavior` for `/api/<service>/health` alongside the existing
@@ -256,19 +261,26 @@ fleet-service, automation-service, and st-gateway (`/api/st-gateway/health`
 — note st-gateway itself has no `/v1` pattern, since it isn't versioned the
 way the others are).
 
-ai-service stays in `MONITORED_SERVICES` but has no production URL to point
-at — it isn't deployed (see "Deployment gaps" above) — so its dot always
-reads "down" in production, correctly if misleadingly: there's nothing
-running to be up.
+ai-service is in `SERVICE_DEFINITIONS` but has no production URL to point at —
+it isn't deployed (see "Deployment gaps" above). `probeableServices` drops any
+service an HTTPS page cannot address, and ai-service's `http://localhost`
+default is one, so in production it is not listed at all rather than shown as
+down. `MONITORED_SERVICES` is the list after that filter. auth-service is not
+in `SERVICE_DEFINITIONS` yet.
 
 ## CI and deploys
 
 Every service's CI job set is split the same way: a `test` job runs the
 service's real test suite on pull requests **and** on pushes to main, and a
-`docker` job runs only on a push (build, push to GHCR, then trigger an SSM
-redeploy on the host) and `needs` the test job, so a merge whose tests fail
-deploys nothing. command-interface deploys via S3 sync plus CloudFront
-invalidation instead, on the same push trigger and behind the same gate.
+`docker` job never runs for a pull request (build, push to GHCR, then trigger
+an SSM redeploy on the host) and `needs` the test job, so a merge whose tests
+fail deploys nothing. For most services that means a push; st-gateway's
+`docker` job and command-interface's `deploy` job also run on a manual
+`workflow_dispatch`, still behind the test job. command-interface deploys via
+S3 sync plus CloudFront invalidation instead, behind the same gate, with both
+jobs on the same Node version and both installing with `npm ci`. agent-service
+adds a third, pull-request-only `image` job that builds the Dockerfile without
+pushing, so a broken image is found before the merge rather than mid-deploy.
 
 Both halves of that are corrections. The `test` job used to be gated to
 `pull_request`, so a merge to main went straight to build-and-deploy with no
@@ -277,6 +289,13 @@ suite run against what was actually being deployed; and the `docker` job did not
 `pull_request` trigger also carries no branch filter now, because filtering it
 to main meant a pull request stacked on another branch ran no checks at all and
 looked green by default.
+
+Deploy permissions are a third correction, found by review of the first two.
+`packages: write` and `id-token: write` are declared on the deploy job, never at
+workflow level. The deploy role trusts the `refs/heads/main` subject alone, and
+the test job now runs on exactly that ref: with workflow-level permissions,
+dependency install scripts and test code could have assumed the role that
+re-runs the production bootstrap documents.
 
 One exception: **ai-service has no CI workflow at all** — see "Deployment
 gaps" above.

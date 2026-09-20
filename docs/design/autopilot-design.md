@@ -91,7 +91,7 @@ The AI may adjust planner parameters (weights, market blacklists, role mix, loop
 5. Credits net-flat over 2h
 6. Market intel staleness above threshold for markets in active use
 
-*(Shipped as five: 2 and 5 measure one thing from two angles — a fleet that stops earning trips both — so they merged into a single `earnings_stalled` check whose two conditions stay separately tunable. See [algorithms.md](../algorithms.md#anomaly-detection).)*
+*(Shipped as five: 2 and 5 measure one thing from two angles — a fleet that stops earning trips both — so they merged into a single `earnings_stalled` check whose conditions stay separately tunable, and which later gained a third, absolute one, `no_earnings`. See [algorithms.md](../algorithms.md#anomaly-detection).)*
 
 **Runner: ai-service calls the OpenAI API.** On anomaly/review, ai-service composes context (anomaly + recent event log + current knobs) and runs a short OpenAI-backed tool-use loop, ending with knob adjustments/replan trigger and a written rationale appended to the event log.
 

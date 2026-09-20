@@ -357,7 +357,8 @@ which is what makes decision 2's priority derivation real.*
 *navigation-service is the one that is not in that list. Its Stage 5 work landed
 under decision 20 ([navigation-service#15](https://github.com/V-M-Pioneer-Trading/navigation-service/pull/15)),
 which dropped the game token and `X-Priority` but did not add the forwarding in
-their place; that followed later, separately from this pass. Until it did, every
+their place; that followed later, separately from this pass
+([navigation-service#19](https://github.com/V-M-Pioneer-Trading/navigation-service/pull/19)). Until it did, every
 one of its calls queued as `background` with no error to say so — exactly the
 silent failure [algorithms.md](../algorithms.md#the-gateway-token-bucket-and-priority-queue)
 warns a backend can cause by verifying a session and then not forwarding it.*

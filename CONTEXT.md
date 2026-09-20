@@ -23,9 +23,11 @@ decisions; this file only fixes vocabulary.
     live. Spends the shared rate budget; moves nothing. Not implied by
     `fleet:control`.
 
-  Which routes each one actually gates is the table in
-  [auth-design.md decision 2](docs/design/auth-design.md#2-spacetraders-is-publicly-readable-and-privately-writable),
-  not this list. Restating it here is how the two drifted apart once already.
+  Which routes each one actually gates is in auth-design.md, not this list: the
+  table in [decision 2](docs/design/auth-design.md#2-spacetraders-is-publicly-readable-and-privately-writable)
+  for `fleet:control` and `agent:reset`, and
+  [decision 20](docs/design/auth-design.md#20-universerefresh-a-third-scope-for-spending-the-rate-budget-without-moving-the-fleet)
+  for `universe:refresh`. Restating it here is how the two drifted apart once already.
 - **Game token** (agent token) — the SpaceTraders credential for the fleet's
   agent. Held by auth-service, injected by st-gateway. Never in the browser,
   never in any other service.

@@ -270,15 +270,18 @@ investigates. Every threshold is a bounded `alert` knob.
 | Check | Fires when |
 |---|---|
 | `ship_idle` | A ship's task hasn't changed phase in N minutes (while armed and live) |
-| `earnings_stalled` | The hourly rate collapsed against its own history, **or** credits show no net increase across a window |
+| `earnings_stalled` | The hourly rate collapsed against its own history, **or** credits show no net increase across a window, **or** nothing at all was sold across a window while the fleet is meant to be working |
 | `consecutive_failures` | One ship accumulates N consecutive failures |
 | `error_rate` | The error fraction of recent ship-task events — mining, contract or scout alike — exceeds a threshold |
 | `market_stale` | A market in active use hasn't been repriced in N minutes |
 
 `earnings_stalled` merges what used to be two checks. They measured one thing
 from two angles — a fleet that stops earning trips both — so firing separately
-made the digest look busier than the fleet was. Both conditions stay separately
-tunable and are named in `detail.reasons`.
+made the digest look busier than the fleet was. A third reading, `no_earnings`,
+was added because the first two both compare the fleet against its own recent
+history: once a dead fleet's history reaches zero they stop tripping, and an
+absolute "nothing was sold" does not. All three stay separately tunable and are
+named in `detail.reasons`.
 
 Each anomaly is persisted first, then delivered to ai-service as a webhook with
 retries and backoff. A dedupe key suppresses the same condition from re-firing
