@@ -126,7 +126,7 @@ graph TD
     FLEET["fleet-service<br/>:3001"]
     AUTOMATION["automation-service<br/>:3003"]
     GATEWAY["st-gateway<br/>:3002 (no CloudFront origin)"]
-    AUTH["auth-service<br/>:3005 (publishes no host port)"]
+    AUTH["auth-service<br/>:3005 (no CloudFront origin)"]
     CADDY["Caddy<br/>:443 — sole public ingress"]
     MYSQL["MySQL<br/>(own EBS volume)"]
     PG["Postgres<br/>(own EBS volume)"]
@@ -178,7 +178,21 @@ and asymmetric:
   itself. It uses `host.docker.internal` (via `--add-host
   host.docker.internal:host-gateway`) for those, and ordinary bridge DNS for
   its two `authnet` peers.
-- auth-service publishes nothing and is firewalled to `authnet` sources only.
+- auth-service is firewalled to `authnet` sources only, and publishes no host
+  port — with one change pending, below.
+
+*Note, 2026-09-21 —
+[infrastructure#86](https://github.com/V-M-Pioneer-Trading/infrastructure/pull/86)
+(meta#80 step 3) publishes auth-service's port as `-p 127.0.0.1:3005:3005` —
+loopback only, so it is still on no external interface — and adds one `RETURN`
+to `authnet-out-guard` before its `DROP`, so the four `--network host` services
+can call `POST /auth/v1/introspect` at `http://localhost:3005`. It is the same
+shape st-gateway already uses. `auth-service-authnet-guard` is untouched, and
+no security-group or CloudFront change is involved. **`terraform apply` on that
+stack is manual**, so merging the PR does not change the host: until the apply
+auth-service publishes nothing, afterwards it publishes on loopback only. Check
+the host (`docker port auth-service`, `iptables -S authnet-out-guard`) rather
+than assuming either state.*
 
 ai-service is **not deployed anywhere** — see the "Deployment gaps" note
 below.

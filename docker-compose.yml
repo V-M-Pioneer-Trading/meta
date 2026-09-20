@@ -125,6 +125,14 @@ services:
       # token to inject). Local-only default; production has no fallback —
       # see auth-design.md decision 9.
       AUTH_SERVICE_SHARED_SECRET: ${AUTH_SERVICE_SHARED_SECRET:-local-dev-auth-service-secret}
+      # Gates POST /auth/v1/introspect (meta#80, decision 21). A DIFFERENT
+      # value from AUTH_SERVICE_SHARED_SECRET above, and it must stay
+      # different: auth-service refuses to start when the two match, on
+      # purpose — every service in the fleet ends up holding this one, so
+      # reusing the vault's would hand them all GET /auth/v1/token. Unset is
+      # also legal and makes the route answer 401 to everyone, which is
+      # production's state until meta#80 step 3 is applied.
+      AUTH_INTROSPECTION_SECRET: ${AUTH_INTROSPECTION_SECRET:-local-dev-introspection-secret}
     volumes:
       - ./dev-keys:/run/dev-keys:ro
       - auth_data:/data

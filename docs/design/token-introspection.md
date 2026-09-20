@@ -134,6 +134,22 @@ agree on — the endpoint, the form field, the `X-Introspection-Secret` header,
 `AUTH_INTROSPECTION_URL` and `AUTH_INTROSPECTION_SECRET`, the 1 s timeout and
 the zero retries.
 
+**`AUTH_INTROSPECTION_URL` is the full endpoint URL, `/auth/v1/introspect`
+included, and a client POSTs to it verbatim.** In production it is
+`http://localhost:3005/auth/v1/introspect` for the four `--network host`
+services and `http://auth-service:3005/auth/v1/introspect` for st-gateway,
+which is on `authnet`; locally it is the compose equivalent. A client must
+never append a path, join a suffix, or otherwise take it apart — RFC 7662 calls
+this the *introspection endpoint*, and an endpoint URL is a whole address. The
+fixture's `contract.endpoint.path` is there to pin **the route auth-service
+serves**, so the center and its three client implementations agree on one
+spelling; it is not a suffix a caller adds to a base URL. A base-URL form was
+considered and rejected: it would put the same literal in three languages to
+drift against, which is the failure this document exists to end. (Owner's
+delegate, 2026-09-21, settling it for
+[infrastructure#86](https://github.com/V-M-Pioneer-Trading/infrastructure/pull/86)'s
+`auth_introspection_url` output, whose description now says the same.)
+
 Each implementation **vendors that file verbatim** into its test support
 directory and drives its own client through every case, with a header on the
 copy naming this file as the original. Vendored rather than imported because
