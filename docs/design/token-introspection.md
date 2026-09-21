@@ -114,7 +114,7 @@ required` **without calling the center**:
 - A non-bearer scheme — `Basic …` — is not forwarded either.
 
 **This rule is a SPECIFICATION, not a description of what the fleet does
-today** (dated 2026-09-21). At the time of writing, three of the five verifiers
+today** (dated 2026-09-21). At the time of writing, four of the six verifiers
 break it, and they break it in two different ways:
 
 | Service | Extraction today | `"Bearer abc def"` becomes | Conforms? |
