@@ -1,0 +1,10 @@
+* text=auto eol=lf
+
+# The conformance fixture is vendored verbatim by five implementations across
+# three languages, each of which compares it against a recorded sha256. Any
+# line-ending translation breaks every one of those checks at once, so the
+# bytes are never touched — not on checkout, not on commit. `scripts/validate-
+# fixtures.mjs` refuses a CR for the same reason, and without this line that
+# check would fail on a Windows checkout with `core.autocrlf=true` rather than
+# on a file anybody actually edited.
+fixtures/introspection.json -text
