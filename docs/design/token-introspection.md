@@ -90,9 +90,60 @@ methods that change nothing:
   dashboard before the real request is sent, and reads as a server fault rather
   than a policy one.
 
-Method comparison is case-insensitive. Scope comparison is **not**: scopes are
-matched by exact membership of the split list, never by prefix, namespace walk,
-substring or case-folding.
+Method comparison is case-insensitive, and so is the bearer **scheme** token
+(RFC 7235 makes it so; `bearer abc` is a credential). Scope comparison is
+**not**: scopes are matched by exact membership of the split list, never by
+prefix, namespace walk, substring or case-folding.
+
+### What is a bearer token, and what is not
+
+An `Authorization` header is a credential only when it is **exactly the scheme
+plus one `token68`** — two whitespace-separated parts and no more. Everything
+else reads as *no credential at all* and answers `401 a bearer token is
+required` **without calling the center**:
+
+- `"Bearer"` and `"Bearer "` carry no token. An empty token is not a token to
+  ask about; forwarding it POSTs `token=` and spends a round trip on the way to
+  the same answer.
+- `"Bearer abc def"` is **not** the token `abcdef` and not the token `abc def`.
+  A header is never concatenated, and never split-with-a-limit so the remainder
+  survives intact. Repairing it invents a credential nobody issued.
+- Two `Authorization` headers, which Express and most servers join into
+  `"Bearer a, Bearer b"`, are four parts and read as none. Picking one lets a
+  caller choose which of two credentials a proxy sees a service verify.
+- A non-bearer scheme — `Basic …` — is not forwarded either.
+
+**This rule is a SPECIFICATION, not a description of what the fleet does
+today** (dated 2026-09-21). At the time of writing, three of the five verifiers
+break it, and they break it in two different ways:
+
+| Service | Extraction today | `"Bearer abc def"` becomes | Conforms? |
+|---|---|---|---|
+| fleet-service | `header.trim().split(/\s+/)`, then `rest.join("")` | the token `abcdef` | **no** |
+| automation-service | same | the token `abcdef` | **no** |
+| st-gateway | same | the token `abcdef` | **no** |
+| navigation-service | `header.trim().split("\\s+", 2)` | the token `abc def` | **no** |
+| agent-service | `strings.Fields`, rejects `len != 2` | no credential | yes |
+| auth-service | `strings.Fields`, rejects `len != 2` | no credential | yes |
+
+The four non-conforming ones forward the invented token into verification and
+answer `invalid or expired session` **after** the work, rather than
+`a bearer token is required` before it. Under decision 21 that "work" becomes a
+network call to the center, which is the part that matters: a malformed header
+is the cheapest thing an anonymous flood can send, and the difference between
+zero calls and one is the difference between a policy answer and an auth
+outage's `503`.
+
+Nothing is being fixed here. The four conform when they migrate — **step 5**
+(fleet-service), **step 7** (navigation-service), **step 8**
+(automation-service) and **step 9** (st-gateway) of
+[meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80) — because each
+deletes its own extraction and takes the shared client's. Recorded so that a
+reader comparing this document against a running service finds a scheduled
+divergence rather than a lie. The fixture pins it from the client side:
+`bearer-with-empty-token`, `bearer-with-internal-whitespace`,
+`gateway-bearer-with-empty-token` and, for the scheme's case-insensitivity,
+`lowercase-bearer-scheme`.
 
 ## Why asking, rather than each service verifying
 
@@ -152,17 +203,18 @@ reason.
 ## Conformance
 
 [`fixtures/introspection.json`](../../fixtures/introspection.json) is the
-source of truth: thirty-one conditions for a calling service, plus ten for
-st-gateway's lane policy — forty-one in all — each with the center response
+source of truth: thirty-five conditions for a calling service, plus ten for
+st-gateway's lane policy — forty-five in all — each with the center response
 that produces it and the answer expected. It also fixes the names three
 implementations have to agree on — the endpoint, the form field, the
 `X-Introspection-Secret` header, `AUTH_INTROSPECTION_URL` and
 `AUTH_INTROSPECTION_SECRET`, the 1 s timeout and the zero retries.
 
 **The fixture is versioned, and `version` is now `2`** (owner's delegate,
-2026-09-21). Version 2 adds the seven calling-service cases and the one gateway
-case that pin the safe-method rule, exact scope matching and what is not a
-bearer token; it changes no existing case and removes none. auth-service's own
+2026-09-21). Version 2 adds eleven calling-service cases and one gateway case
+that pin the safe-method rule in both directions, exact scope matching, what is
+and is not a bearer token, and which comparisons are case-insensitive; it
+changes no existing case and removes none. auth-service's own
 vendored copy pins **version 1**, at meta commit `358231f`, and is re-vendored
 at **step 11** of [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80);
 it stays valid in the meantime because version 2 only adds cases a *client*

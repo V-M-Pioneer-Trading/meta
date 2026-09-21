@@ -1,0 +1,42 @@
+name: validate
+
+on:
+  # No branch filter on `pull_request`: a PR stacked on another branch needs
+  # the same checks as one targeting main. Filtering to main means a stacked
+  # PR runs nothing at all and looks green by default.
+  pull_request:
+  push:
+    branches: [main]
+
+# Read-only for the whole workflow. Nothing here publishes, comments or
+# writes; it reads one file and exits.
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      # Third-party actions are pinned to a full commit SHA, not a tag: a tag
+      # is a movable pointer in someone else's repository, and `@v4` silently
+      # becomes whatever they push to it. The comment records which release
+      # the SHA was, so a reviewer can read the intent and a bump is a visible
+      # diff.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # There is no package.json here and there is not going to be one — the
+      # validator is zero-dependency plain node for exactly that reason — so
+      # no `cache: npm`, which needs a lockfile to key on, and no `npm ci`.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      # Five implementations across three languages vendor
+      # fixtures/introspection.json verbatim and compare it against a recorded
+      # sha256. A structural mistake here is a mistake in all of them at once,
+      # and the expensive kind is the silent one — a message that does not
+      # match `contract.messages`, an identity that disagrees with the center
+      # body it is derived from, an assertion key no suite knows. None of
+      # those is something a conformance suite can catch about itself.
+      - name: Validate the conformance fixtures
+        run: node scripts/validate-fixtures.mjs
