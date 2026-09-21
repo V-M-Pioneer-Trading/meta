@@ -1063,7 +1063,8 @@ carry in every service. Six of them later, the bet has visibly lost.
   forgets it.
 
 The fix that makes it structural is not the hop by itself, it is the hop plus
-**default-deny on mutating methods**: a non-`GET` route that declares no scope
+**default-deny on mutating methods**: a route on a mutating method that
+declares no scope
 answers `500`, before it looks at the credential, rather than serving the
 request. A future #71 stops being a thing someone has to notice.
 
@@ -1133,15 +1134,15 @@ in this epic* for the reasoning and for what would reopen it.
 #### What a calling service does
 
 One **global** middleware per service — not a per-route decoration — and
-**default-deny on mutating methods**: a non-`GET` route that declares no scope
-is refused. Scopes are declared at the route.
+**default-deny on mutating methods**: a route on a mutating method that
+declares no scope is refused. Scopes are declared at the route.
 
 Rows are evaluated in this order, and the first one is first for a reason:
 
 | Situation | Answer |
 |---|---|
-| Non-`GET` route declaring no scope | `500 this route declares no required scope`. **Before the header is looked at**, so the answer is the same with a valid token, a bad one, and none at all. **No call to the center.** |
-| No `Authorization` header, public `GET` | proceed as a visitor. **No call to the center.** |
+| Route on a mutating method declaring no scope | `500 this route declares no required scope`. **Before the header is looked at**, so the answer is the same with a valid token, a bad one, and none at all. **No call to the center.** |
+| No `Authorization` header, public `GET`, `HEAD` or `OPTIONS` | proceed as a visitor. **No call to the center.** |
 | No `Authorization` header, guarded route | `401 a bearer token is required` |
 | Header present, `active: false` | `401 invalid or expired session`, on every method. A bad credential is **never** downgraded to visitor. |
 | Active, required scope missing | `403 this action requires a scope this session does not carry` — generic, and the scope is **not** named |
@@ -1158,6 +1159,24 @@ maps a `403` to a terminal `credentials` verdict — so it would abandon a targe
 and send the operator to check Clerk scopes for a bug in our own routing table.
 Evaluating it before the header is what makes the answer honest: the credential
 a caller did or did not bring says nothing about a route that declares nothing.
+
+**"Mutating" means anything but `GET`, `HEAD` and `OPTIONS`** (owner's
+delegate, 2026-09-21). The row above originally read "non-`GET`", which swept
+in the other two safe methods of RFC 9110 §9.2.1. `HEAD` is the *same route* as
+`GET` — Express dispatches it to the `GET` handler, so a requirement declared
+for `GET /x` governs `HEAD /x` and an adapter must resolve it that way — and
+`OPTIONS` with no declared requirement proceeds as `none`, because a CORS
+preflight carries no `Authorization` header at all and a `500` there breaks
+every cross-origin call from the dashboard. Exempting `HEAD` from default-deny
+does **not** exempt it from a requirement the route did declare: `HEAD` on a
+guarded route with no credential is the same `401` as `GET`, or the exemption
+becomes a credential-free read of a guarded route's headers. Method comparison
+is case-insensitive; scope comparison is exact-match and case-sensitive.
+[`fixtures/introspection.json`](../../fixtures/introspection.json) is at
+`version` **2** for this: seven added calling-service cases and one added
+gateway case, no existing case changed or removed. auth-service's vendored copy
+pins version 1 at meta `358231f` and is re-vendored at **step 11** of the epic;
+it stays valid because version 2 only adds cases a *client* answers.
 
 The `401` and `403` sentences are the ones four services already answer with;
 they are preserved byte for byte, and automation-service's scope-naming `403`

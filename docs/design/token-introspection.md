@@ -24,8 +24,8 @@ to `POST /auth/v1/introspect` and acts on the answer.
 
 | Situation | Status | Message | Center called |
 |---|---|---|---|
-| Non-`GET` route declaring no scope | **500** | `this route declares no required scope` | **no** |
-| No `Authorization`, route declares nothing and is a `GET` | — | proceeds as a visitor | **no** |
+| Route on a **mutating** method declaring no scope | **500** | `this route declares no required scope` | **no** |
+| No `Authorization`, route declares nothing and the method is **safe** | — | proceeds as a visitor | **no** |
 | No `Authorization`, route declares a scope or a session | **401** | `a bearer token is required` | **no** |
 | A header that is not `Bearer <something>` | **401** | `a bearer token is required` | **no** |
 | `{"active": false}` | **401** | `invalid or expired session` | yes |
@@ -47,8 +47,10 @@ someone will otherwise make:**
   including a `GET` that would have been served anonymously. Downgrading hides
   an expired session from the operator holding it and hides a misconfigured
   trust anchor from everyone.
-- **Default-deny on mutating methods, and it is a `500`.** A non-`GET` route
-  that declares no scope is refused, not served. This is the part that makes
+- **Default-deny on mutating methods, and it is a `500`.** A route on a
+  mutating method that declares no scope is refused, not served — mutating
+  meaning anything other than the safe methods `GET`, `HEAD` and `OPTIONS`.
+  This is the part that makes
   [meta#71](https://github.com/V-M-Pioneer-Trading/meta/issues/71) —
   an unauthenticated `POST` nobody remembered to guard — structurally
   impossible rather than merely unlikely, and it is why the middleware is
@@ -68,6 +70,29 @@ someone will otherwise make:**
   it covers are answers. It must also stay distinct from st-gateway's
   `SpaceTraders credential not configured`, which is the one `503` sentence
   automation-service's classifier treats as "an operator must act".
+
+**Default-deny applies to mutating methods only. `GET`, `HEAD` and `OPTIONS`
+are safe methods (RFC 9110 §9.2.1) and are exempt** (owner's delegate,
+2026-09-21). The rule as first written said "non-`GET`", which swept in two
+methods that change nothing:
+
+- **`HEAD` is the same route as `GET`.** Express dispatches a `HEAD` to the
+  `GET` handler, so a requirement declared for `GET /x` governs `HEAD /x` too,
+  and an adapter must resolve it that way — a resolver keyed on `"GET /path"`
+  has to be consulted for a `HEAD` of that path. Exempting `HEAD` from
+  default-deny is **not** exempting it from a requirement the route did
+  declare: `HEAD` on a guarded route with no credential is the same `401` as
+  `GET`. Getting that half wrong hands out a credential-free read of a guarded
+  route's headers, which leak existence, sizes and `ETag`s.
+- **`OPTIONS` with no declared requirement proceeds as `none`.** A CORS
+  preflight carries no `Authorization` header by definition — the browser
+  strips it — so answering `500` breaks every cross-origin call from the
+  dashboard before the real request is sent, and reads as a server fault rather
+  than a policy one.
+
+Method comparison is case-insensitive. Scope comparison is **not**: scopes are
+matched by exact membership of the split list, never by prefix, namespace walk,
+substring or case-folding.
 
 ## Why asking, rather than each service verifying
 
@@ -127,12 +152,22 @@ reason.
 ## Conformance
 
 [`fixtures/introspection.json`](../../fixtures/introspection.json) is the
-source of truth: twenty-four conditions for a calling service, plus nine for
-st-gateway's lane policy, each with the center response that produces it and
-the answer expected. It also fixes the names three implementations have to
-agree on — the endpoint, the form field, the `X-Introspection-Secret` header,
-`AUTH_INTROSPECTION_URL` and `AUTH_INTROSPECTION_SECRET`, the 1 s timeout and
-the zero retries.
+source of truth: thirty-one conditions for a calling service, plus ten for
+st-gateway's lane policy — forty-one in all — each with the center response
+that produces it and the answer expected. It also fixes the names three
+implementations have to agree on — the endpoint, the form field, the
+`X-Introspection-Secret` header, `AUTH_INTROSPECTION_URL` and
+`AUTH_INTROSPECTION_SECRET`, the 1 s timeout and the zero retries.
+
+**The fixture is versioned, and `version` is now `2`** (owner's delegate,
+2026-09-21). Version 2 adds the seven calling-service cases and the one gateway
+case that pin the safe-method rule, exact scope matching and what is not a
+bearer token; it changes no existing case and removes none. auth-service's own
+vendored copy pins **version 1**, at meta commit `358231f`, and is re-vendored
+at **step 11** of [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80);
+it stays valid in the meantime because version 2 only adds cases a *client*
+answers, and auth-service is the center. A copy is allowed to lag the original;
+it is never allowed to lead it.
 
 **`AUTH_INTROSPECTION_URL` is the full endpoint URL, `/auth/v1/introspect`
 included, and a client POSTs to it verbatim.** In production it is
