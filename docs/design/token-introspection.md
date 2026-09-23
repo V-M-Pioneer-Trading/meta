@@ -291,6 +291,17 @@ computes an answer it was given.
   tab and a trailing space, matching what all five verifiers do today
   (`strings.Fields`, `/\s+/`, `\\s+`). A client splitting on a single space
   literal cannot find the required scope at all.
+- **`scope` is always present on an active answer** (dated 2026-09-23). The
+  center sends `"scope":""` when the token carries no scopes (no claim, an
+  empty string or an empty array) and never leaves the key out, which is what
+  every stub in the fixture already assumes. RFC 7662 would allow leaving it
+  out, and until
+  [auth-service#4](https://github.com/V-M-Pioneer-Trading/auth-service/pull/4)
+  the center did: ts-introspection-client v1.1.0 read the missing key as a
+  malformed answer and returned `503` on every session route for a signed-in
+  user holding no scopes. Clients should still tolerate its absence and read
+  it as `""`. The contract is the center's to keep, but a client that fails
+  closed on an RFC-legal shape turns a center regression into an outage.
 
 Local additions belong in the service's own tests. This file holds only
 conditions every implementation must answer identically.

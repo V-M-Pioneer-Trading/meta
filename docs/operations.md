@@ -99,8 +99,9 @@ Curling an authenticated route needs a token. Locally, every backend that
 verifies a Clerk session checks it against the committed development keypair in
 `dev-keys/`, which compose mounts into each of them, and
 `node scripts/mint-dev-token.mjs` signs a token against its private half. That is
-every backend but ai-service, which verifies nothing, and fleet-service,
-which asks auth-service instead (meta#80); neither gets the mount. The one
+every backend but ai-service, which verifies nothing, and fleet-service and
+agent-service, which ask auth-service instead (meta#80); none of them gets the
+mount. The one
 alternative is setting `CLERK_JWT_KEY` in `.env` to a real Clerk instance's
 public key, which overrides the mounted file and means signing in for real. See
 [dev-keys/README.md](../dev-keys/README.md) for why that key is committed, why
