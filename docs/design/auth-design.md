@@ -1175,7 +1175,10 @@ is case-insensitive; scope comparison is exact-match and case-sensitive.
 [`fixtures/introspection.json`](../../fixtures/introspection.json) is at
 `version` **2** for this: eleven added calling-service cases and one added
 gateway case — thirty-five and ten, forty-five in all — with no existing case
-changed or removed. What the fixture cannot reach is how an adapter *binds* a
+changed or removed. Version **3** (2026-09-25,
+[meta#87](https://github.com/V-M-Pioneer-Trading/meta/issues/87)) later added
+three cases in which the center's active answer omits `scope`, which a client
+reads as no scopes. What the fixture cannot reach is how an adapter *binds* a
 requirement to a route: it hands `route.requires` over already resolved, so
 prefix-mounted routers, trailing slashes, case-variant paths, parameterised
 paths and `app.all` handlers answering `OPTIONS` are the adapter's own
@@ -1184,7 +1187,7 @@ is a route that *declared* no credential is needed, and a route an adapter
 could find no declaration for must fail closed and loudly, never fall back to
 `"none"`. auth-service's vendored copy
 pins version 1 at meta `358231f` and is re-vendored at **step 11** of the epic;
-it stays valid because version 2 only adds cases a *client* answers.
+it stays valid because versions 2 and 3 only add cases a *client* answers.
 
 The `401` and `403` sentences are the ones four services already answer with;
 they are preserved byte for byte, and automation-service's scope-naming `403`
