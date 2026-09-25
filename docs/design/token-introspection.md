@@ -292,15 +292,16 @@ computes an answer it was given.
   (`strings.Fields`, `/\s+/`, `\\s+`). A client splitting on a single space
   literal cannot find the required scope at all.
 - **`scope` is always present on an active answer** (dated 2026-09-23). The
-  center sends `"scope":""` when the token carries no scopes (no claim, an
-  empty string or an empty array) and never leaves the key out. RFC 7662 would allow leaving it
-  out, and until
+  center sends `"scope":""` when the token carries no scopes (no claim, an empty
+  string or an empty array) and never leaves the key out. RFC 7662 would allow
+  leaving it out, and until
   [auth-service#4](https://github.com/V-M-Pioneer-Trading/auth-service/pull/4)
   the center did: ts-introspection-client v1.1.0 read the missing key as a
   malformed answer and returned `503` on every session route for a signed-in
-  user holding no scopes. Clients must still tolerate its absence and read
-  it as `""`; fixture version 3 (meta#87) has cases whose stub omits the key. The contract is the center's to keep, but a client that fails
-  closed on an RFC-legal shape turns a center regression into an outage.
+  user holding no scopes. Clients must still tolerate its absence and read it as
+  `""`; fixture version 3 (meta#87) has cases whose stub omits the key. The
+  contract is the center's to keep, but a client that fails closed on an
+  RFC-legal shape turns a center regression into an outage.
 
 Local additions belong in the service's own tests. This file holds only
 conditions every implementation must answer identically.
