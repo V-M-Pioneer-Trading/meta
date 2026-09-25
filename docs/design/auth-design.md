@@ -1109,6 +1109,9 @@ the first two correctly:
   - invalid, expired, foreign-signed or malformed token: `{"active": false}`
   - valid token:
     `{"active": true, "sub": "…", "scope": "a b c", "exp": 1234567890, "kind": "operator" | "machine"}`
+- `scope` is always present on an active answer, `""` when the token carries
+  none (auth-service#4). RFC 7662 lets a center omit it, so a client must still
+  read an absent `scope` as `""`; fixture version 3 pins that (meta#87).
 - `scope` is returned **verbatim and space-delimited**, whether the claim
   arrived as a string or as an array. The center keeps no route-to-scope table;
   it answers what the token says, not what a route needs.
