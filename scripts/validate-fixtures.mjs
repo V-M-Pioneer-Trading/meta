@@ -138,6 +138,9 @@ const stubbedScope = (center) => {
     return undefined;
   }
   if (!isObject(parsed) || parsed.active !== true) return undefined;
+  // An active answer with no `scope` key is no scopes (version 3, meta#87):
+  // RFC 7662 makes the key optional, and every client reads it as "".
+  if (parsed.scope === undefined) return "";
   return typeof parsed.scope === "string" ? parsed.scope : undefined;
 };
 

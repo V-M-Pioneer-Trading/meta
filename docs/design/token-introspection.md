@@ -203,22 +203,37 @@ reason.
 ## Conformance
 
 [`fixtures/introspection.json`](../../fixtures/introspection.json) is the
-source of truth: thirty-five conditions for a calling service, plus ten for
-st-gateway's lane policy — forty-five in all — each with the center response
+source of truth: thirty-seven conditions for a calling service, plus eleven for
+st-gateway's lane policy — forty-eight in all — each with the center response
 that produces it and the answer expected. It also fixes the names three
 implementations have to agree on — the endpoint, the form field, the
 `X-Introspection-Secret` header, `AUTH_INTROSPECTION_URL` and
 `AUTH_INTROSPECTION_SECRET`, the 1 s timeout and the zero retries.
 
-**The fixture is versioned, and `version` is now `2`** (owner's delegate,
-2026-09-21). Version 2 adds eleven calling-service cases and one gateway case
-that pin the safe-method rule in both directions, exact scope matching, what is
-and is not a bearer token, and which comparisons are case-insensitive; it
+**The fixture is versioned, and `version` is now `3`.** Version 3
+(2026-09-25, [meta#87](https://github.com/V-M-Pioneer-Trading/meta/issues/87))
+adds two calling-service cases and one gateway case in which the center's
+active answer has **no `scope` key at all**. RFC 7662 makes the key optional,
+and until [auth-service#4](https://github.com/V-M-Pioneer-Trading/auth-service/pull/4)
+the center left it out for a token carrying no scopes; ts-introspection-client
+1.0.0–1.1.0 read that as a malformed answer and served `503` to every
+scopeless session in production. A client reads an absent `scope` exactly as
+`"scope":""`: a session route proceeds with an empty scope list, a scoped
+route answers `403`, and st-gateway lanes by `kind`. A `scope` that is
+present but not a string is still a malformed answer. The center now always
+sends the key, so these bodies are a client's obligation only.
+
+Version 2 (owner's delegate, 2026-09-21) adds eleven calling-service cases
+and one gateway case that pin the safe-method rule in both directions, exact
+scope matching, what is and is not a bearer token, and which comparisons are
+case-insensitive; it
 changes no existing case and removes none. auth-service's own
 vendored copy pins **version 1**, at meta commit `358231f`, and is re-vendored
 at **step 11** of [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80);
-it stays valid in the meantime because version 2 only adds cases a *client*
-answers, and auth-service is the center. A copy is allowed to lag the original;
+it stays valid in the meantime because versions 2 and 3 only add cases a
+*client* answers, and auth-service is the center. Version 3's bodies are not
+producible by the center at all, so its fixture test must classify them as
+client-only when it re-vendors. A copy is allowed to lag the original;
 it is never allowed to lead it.
 
 **`AUTH_INTROSPECTION_URL` is the full endpoint URL, `/auth/v1/introspect`
@@ -282,11 +297,12 @@ computes an answer it was given.
   the subject prefix — and exists only to pin who owns the rule. Without it, a
   client that kept `sub.startsWith("user_")`, which is precisely what
   st-gateway does today, passes every other case unchanged.
-- **The session tier is a tier.** Three cases cover a route that requires a
+- **The session tier is a tier.** Four cases cover a route that requires a
   verified session and no particular scope: no header, an inactive token, and
-  an active token carrying **no scopes at all**, which must be allowed. A
+  an active token carrying **no scopes at all** — once with `"scope":""` and,
+  since version 3, once with the key absent — which must be allowed. A
   client that folds this tier into "public" passes the first two only by
-  accident; one that folds it into "any scope" fails the third.
+  accident; one that folds it into "any scope" fails the last two.
 - **`scope` is split on whitespace runs.** One case carries a double space, a
   tab and a trailing space, matching what all five verifiers do today
   (`strings.Fields`, `/\s+/`, `\\s+`). A client splitting on a single space
