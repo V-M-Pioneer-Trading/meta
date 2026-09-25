@@ -302,7 +302,7 @@ computes an answer it was given.
   an active token carrying **no scopes at all** — once with `"scope":""` and,
   since version 3, once with the key absent — which must be allowed. A
   client that folds this tier into "public" passes the first two only by
-  accident; one that folds it into "any scope" fails the third.
+  accident; one that folds it into "any scope" fails the last two.
 - **`scope` is split on whitespace runs.** One case carries a double space, a
   tab and a trailing space, matching what all five verifiers do today
   (`strings.Fields`, `/\s+/`, `\\s+`). A client splitting on a single space
