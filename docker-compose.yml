@@ -58,15 +58,18 @@ services:
       MYSQL_DATABASE: vnm-agent-db
       CORS_ALLOWED_ORIGIN: http://localhost:3000
       ST_GATEWAY_URL: http://st-gateway:3002
-      # Same local trust anchor as automation-service — see its comment below.
-      CLERK_JWT_KEY_FILE: /run/dev-keys/dev-only-do-not-use.pub.pem
-      CLERK_JWT_KEY: ${CLERK_JWT_KEY:-}
-    volumes:
-      - ./dev-keys:/run/dev-keys:ro
+      # agent-service verifies no token itself (meta#80, decision 21): it asks
+      # auth-service, which holds the dev-keys anchor. The secret must be the
+      # value auth-service gets below, so it is the same expression, default
+      # included; override both at once with AUTH_INTROSPECTION_SECRET in .env.
+      AUTH_INTROSPECTION_URL: http://auth-service:80/auth/v1/introspect
+      AUTH_INTROSPECTION_SECRET: ${AUTH_INTROSPECTION_SECRET:-local-dev-introspection-secret}
     depends_on:
       mysql:
         condition: service_healthy
       st-gateway:
+        condition: service_started
+      auth-service:
         condition: service_started
 
   navigation-service:
