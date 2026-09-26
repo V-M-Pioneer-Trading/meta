@@ -21,7 +21,11 @@
  *   5. `expect.identity.scopes` is the center body's `scope`, split the way
  *      every verifier splits it — on whitespace RUNS, empties discarded;
  *   6. `route`, `request`, `center` and `expect` carry known keys only;
- *   7. every case has a non-empty `why`.
+ *   7. every case has a non-empty `why`;
+ *   8. `request.authorization` is null, one header line (a string), or two or
+ *      more lines (an array of strings, version 4) — and a case sending more
+ *      than one line expects the center not to be called, because more than
+ *      one `Authorization` line is never a credential.
  *
  * Zero dependencies and plain node, so it runs in CI with no install step and
  * on a checkout with no node_modules. Exit 0 says nothing is wrong; exit 1
@@ -180,13 +184,31 @@ const checkCase = (problems, group, testCase, messageValues) => {
     }
   }
 
+  // 8. One header line is a string and nothing else; the array form is for
+  //    two or more lines, each element one line in order, "" an empty line
+  //    (version 4). An array of one would be a second spelling of a string and
+  //    an empty array a second spelling of null, so both are refused.
+  let lineCount;
   if (!checkKnownKeys(problems, where, testCase.request, KNOWN_REQUEST_KEYS, "request")) {
     problems.add(where, "request must be an object");
-  } else if (
-    testCase.request.authorization !== null &&
-    typeof testCase.request.authorization !== "string"
-  ) {
-    problems.add(where, "request.authorization must be a string or null");
+  } else {
+    const authorization = testCase.request.authorization;
+    if (authorization === null) {
+      lineCount = 0;
+    } else if (typeof authorization === "string") {
+      lineCount = 1;
+    } else if (
+      Array.isArray(authorization) &&
+      authorization.length >= 2 &&
+      authorization.every((line) => typeof line === "string")
+    ) {
+      lineCount = authorization.length;
+    } else {
+      problems.add(
+        where,
+        "request.authorization must be null, a string (one header line), or an array of two or more strings (one per header line)"
+      );
+    }
   }
 
   const center = testCase.center;
@@ -213,6 +235,16 @@ const checkCase = (problems, group, testCase, messageValues) => {
       `expect.centerCalls is ${calls} but center.notCalled is ${JSON.stringify(
         center.notCalled
       )} — centerCalls 0 and center.notCalled must be exactly the same claim`
+    );
+  }
+
+  // 8 (continued). More than one Authorization line is no credential, so a
+  //    case that sends several and expects the center to be asked contradicts
+  //    the rule it exists to pin.
+  if (lineCount !== undefined && lineCount > 1 && calls !== 0) {
+    problems.add(
+      where,
+      `request sends ${lineCount} Authorization lines but expect.centerCalls is ${JSON.stringify(calls)} — more than one line is never a credential, so the center is never called`
     );
   }
 

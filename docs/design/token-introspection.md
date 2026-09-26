@@ -108,9 +108,34 @@ required` **without calling the center**:
 - `"Bearer abc def"` is **not** the token `abcdef` and not the token `abc def`.
   A header is never concatenated, and never split-with-a-limit so the remainder
   survives intact. Repairing it invents a credential nobody issued.
-- Two `Authorization` headers, which Express and most servers join into
-  `"Bearer a, Bearer b"`, are four parts and read as none. Picking one lets a
-  caller choose which of two credentials a proxy sees a service verify.
+- **More than one `Authorization` line, whatever the lines hold, is no
+  credential**, and the center is not called. The count comes from the **raw
+  header list** — the lines as they arrived, before any framework has merged
+  them — and there are two ways to miss it. *Join-then-count*: Go's
+  `Header.Values` and Tomcat's `getHeaders` keep every line, and a client
+  that joins them with `", "` and counts parts reads `Bearer a` plus an
+  **empty** second line as `"Bearer a, "`, which is two parts, and asks the
+  center about the token `a,` that nobody sent. *A parser that drops
+  duplicates*: Node's HTTP parser discards repeated `authorization` lines and
+  keeps the first, so `req.headers.authorization` shows one well-formed
+  credential and only `req.rawHeaders` shows two arrived. An empty line is
+  still a line. Picking one lets a caller choose which of two credentials a
+  proxy sees a service verify.
+
+  *Dated 2026-09-26.* This bullet first said that two headers "which Express
+  and most servers join into `"Bearer a, Bearer b"`" are four parts and read
+  as none. That was wrong on both counts — Express never sees a joined value,
+  and a join can come out as two parts — and three implementations were found
+  getting the count wrong in one week. A runtime review of
+  [navigation-service#22](https://github.com/V-M-Pioneer-Trading/navigation-service/pull/22)
+  found its Java client joining Tomcat's `getHeaders` and introspecting `a,`
+  for `Bearer a` plus an empty line; agent-service's Go client did the same
+  with `Header.Values`, fixed in
+  [agent-service#27](https://github.com/V-M-Pioneer-Trading/agent-service/pull/27).
+  ts-introspection-client 1.1.1 never sees the second line at all: on a raw
+  socket, `Bearer a` + `Bearer b` reached Express as `"Bearer a"` and the
+  center was asked about `a`, and an empty line + `Bearer b` reached it as
+  `""` and was served as a visitor. Fixture version 4 pins the count.
 - A non-bearer scheme — `Basic …` — is not forwarded either.
 
 **This rule is a SPECIFICATION, not a description of what the fleet does
@@ -203,14 +228,28 @@ reason.
 ## Conformance
 
 [`fixtures/introspection.json`](../../fixtures/introspection.json) is the
-source of truth: thirty-seven conditions for a calling service, plus eleven for
-st-gateway's lane policy — forty-eight in all — each with the center response
+source of truth: forty conditions for a calling service, plus twelve for
+st-gateway's lane policy — fifty-two in all — each with the center response
 that produces it and the answer expected. It also fixes the names three
 implementations have to agree on — the endpoint, the form field, the
 `X-Introspection-Secret` header, `AUTH_INTROSPECTION_URL` and
 `AUTH_INTROSPECTION_SECRET`, the 1 s timeout and the zero retries.
 
-**The fixture is versioned, and `version` is now `3`.** Version 3
+**The fixture is versioned, and `version` is now `4`.** Version 4
+(2026-09-26) adds three calling-service cases and one gateway case in which
+the request carries **two `Authorization` lines** — two bearer credentials,
+or a bearer credential and an empty line — and changes none. To express them,
+`request.authorization` may now be an array of two or more strings, one per
+header line in order, `""` being an empty line; a single string is still one
+line and `null` still none. Two lines are no credential: a guarded route
+answers `401 a bearer token is required`, a public `GET` proceeds as a
+visitor, the gateway lanes `background`, and the center is never called (see
+[What is a bearer token](#what-is-a-bearer-token-and-what-is-not)). Every
+client re-vendors version 4: ts-introspection-client next, agent-service and
+navigation-service at step 11 of
+[meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80).
+
+Version 3
 (2026-09-25, [meta#87](https://github.com/V-M-Pioneer-Trading/meta/issues/87))
 adds two calling-service cases and one gateway case in which the center's
 active answer has **no `scope` key at all**. RFC 7662 makes the key optional,
@@ -230,7 +269,7 @@ case-insensitive; it
 changes no existing case and removes none. auth-service's own
 vendored copy pins **version 1**, at meta commit `358231f`, and is re-vendored
 at **step 11** of [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80);
-it stays valid in the meantime because versions 2 and 3 only add cases a
+it stays valid in the meantime because versions 2, 3 and 4 only add cases a
 *client* answers, and auth-service is the center. Version 3's bodies are not
 producible by the center at all, so its fixture test must classify them as
 client-only when it re-vendors. A copy is allowed to lag the original;
