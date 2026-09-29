@@ -18,12 +18,14 @@ services:
       # decision 7) — a mutual depends_on would be an unresolvable cycle.
       AUTH_SERVICE_URL: http://auth-service:80
       AUTH_SERVICE_SHARED_SECRET: ${AUTH_SERVICE_SHARED_SECRET:-local-dev-auth-service-secret}
-      # decision 2: priority derived from a verified Clerk identity. Same
-      # local trust anchor as auth-service — see its comment.
-      CLERK_JWT_KEY_FILE: /run/dev-keys/dev-only-do-not-use.pub.pem
-      CLERK_JWT_KEY: ${CLERK_JWT_KEY:-}
-    volumes:
-      - ./dev-keys:/run/dev-keys:ro
+      # decision 2's priority, derived from auth-service's answer about the
+      # caller's token rather than a key of its own (meta#80 step 9, decision
+      # 21). The secret must be the value auth-service gets below, so it is the
+      # same expression, default included; override both at once with
+      # AUTH_INTROSPECTION_SECRET in .env. st-gateway refuses to start without
+      # these two.
+      AUTH_INTROSPECTION_URL: http://auth-service:80/auth/v1/introspect
+      AUTH_INTROSPECTION_SECRET: ${AUTH_INTROSPECTION_SECRET:-local-dev-introspection-secret}
 
   mysql:
     container_name: vnm-agent-service-db
@@ -130,8 +132,8 @@ services:
       # dev-keys/README.md), bind-mounted below so a fresh clone runs the real
       # verification path with no Clerk account. To drive the actual UI, set
       # CLERK_JWT_KEY in .env to a Clerk dev instance's public key — an inline
-      # value wins over the file. There is no "auth off" mode. st-gateway
-      # verifies against the same anchor; every other service asks this one.
+      # value wins over the file. There is no "auth off" mode. This is the only
+      # service that verifies; every other one asks this one.
       CLERK_JWT_KEY_FILE: /run/dev-keys/dev-only-do-not-use.pub.pem
       CLERK_JWT_KEY: ${CLERK_JWT_KEY:-}
       # Gates GET /auth/v1/token (st-gateway's only way to fetch the agent

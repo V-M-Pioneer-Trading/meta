@@ -10,6 +10,11 @@ a specification, not as a description. The decision itself is
 [auth-design.md decision 21](auth-design.md#21-one-verifier-every-service-asks-auth-service-what-a-token-carries),
 which supersedes decision 4.*
 
+*Dated 2026-09-29: shipped. Every service that receives an `Authorization`
+header now behaves as this document says, and no service but auth-service
+verifies a token. The status above is kept as written; read the rest as a
+description, with the dated notes below marking where practice and text part.*
+
 Normative for every service that receives an `Authorization` header:
 agent-service, fleet-service, navigation-service, automation-service,
 st-gateway, and auth-service's own two vault routes.
@@ -136,6 +141,16 @@ required` **without calling the center**:
   socket, `Bearer a` + `Bearer b` reached Express as `"Bearer a"` and the
   center was asked about `a`, and an empty line + `Bearer b` reached it as
   `""` and was served as a visitor. Fixture version 4 pins the count.
+
+  *Dated 2026-09-29.* From the internet this rule is never exercised.
+  CloudFront collapses duplicate `Authorization` lines into one before the
+  request reaches the host, so two lines sent to the public domain arrive as
+  one credential and are introspected as one. Verified against fleet-service:
+  the same two lines answered `401 invalid or expired session` through
+  CloudFront and `401 a bearer token is required` sent to the host directly.
+  The count is exercised only by a caller on the host or on `authnet`, so a
+  check of it has to be run from there; a request through the distribution
+  cannot fail it.
 - A non-bearer scheme — `Basic …` — is not forwarded either.
 
 **This rule is a SPECIFICATION, not a description of what the fleet does
@@ -169,6 +184,12 @@ divergence rather than a lie. The fixture pins it from the client side:
 `bearer-with-empty-token`, `bearer-with-internal-whitespace`,
 `gateway-bearer-with-empty-token` and, for the scheme's case-insensitivity,
 `lowercase-bearer-scheme`.
+
+*Dated 2026-09-29.* All four migrated as scheduled, and the table above is now
+historical: no row of it describes a running service. fleet-service,
+automation-service and st-gateway now extract through ts-introspection-client,
+and navigation-service through its Java client, each driven by fixture
+version 4.
 
 ## Why asking, rather than each service verifying
 
@@ -298,6 +319,28 @@ these are three languages in three repositories: a copied data file makes drift
 visible in a diff, which a prose specification does not. Change `meta` first,
 then re-copy. Unknown assertion keys must fail the case rather than be skipped,
 so a copy that falls behind says so instead of quietly checking less.
+
+*Dated 2026-09-29 — which suite drives which group.* The fixture's
+`$gatewayCasesComment` says st-gateway consumes both groups through the shared
+TS client, "so both groups must be driven by its suite". In practice the split
+is by repository: ts-introspection-client's own suite drives the forty
+calling-service cases, and
+[st-gateway#11](https://github.com/V-M-Pioneer-Trading/st-gateway/pull/11)
+drives only the twelve gateway cases, through its app. Every case is still
+driven against the code that answers it, which is what the sentence was for;
+this is the reading to take. The fixture's wording — and its `$comment`'s
+"DECIDED 2026-09-20, NOT SHIPPED" — are left alone, because every client pins
+the file's sha256, and a corrected sentence would cost a re-vendor in every
+repository to say nothing new.
+
+*Dated 2026-09-29 — an open divergence the fixture does not pin.* When the
+center's answer repeats a JSON key, the TS client takes the last value, as
+`JSON.parse` does, where the Go and Java clients refuse the body as malformed
+and answer `503`. It is not a bypass: only the center writes that body, over
+loopback or `authnet`, and it never repeats a key, so reaching the difference
+takes a center that is already lying. It is still two answers where the
+contract promises one. Tracked, open, as
+[ts-introspection-client#6](https://github.com/V-M-Pioneer-Trading/ts-introspection-client/issues/6).
 
 **The suite stands up a stub center, and stops signing tokens.** That is the
 practical change for five repositories: no ephemeral keypair, no `jose` or

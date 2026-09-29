@@ -53,7 +53,7 @@ graph TD
     AGENT["agent-service<br/>(agent, ships, contracts, transactions)"]
     FLEET["fleet-service<br/>(ship actions)"]
     GW["st-gateway<br/>(global rate budget)"]
-    AUTH["auth-service<br/>(account + agent token)"]
+    AUTH["auth-service<br/>(account + agent token;<br/>the one token verifier)"]
     ST["SpaceTraders API"]
     MCP["spacetraders-mcp-server<br/>(interactive operator tools)"]
 
@@ -75,6 +75,10 @@ graph TD
     GW --> ST
 ```
 
+Not drawn, because it would join every box to one: each backend's
+`POST /auth/v1/introspect` to auth-service on every request that carries a
+token (see [below](#exactly-one-service-stores-the-game-token)).
+
 ## The services
 
 | Service | Stack | Role |
@@ -83,7 +87,7 @@ graph TD
 | [agent-service](https://github.com/V-M-Pioneer-Trading/agent-service) | Go / MySQL | Agent profile, ship list, contracts (read + accept/fulfill), contract delivery history, ship/cargo purchases and cargo sells, transaction history |
 | [fleet-service](https://github.com/V-M-Pioneer-Trading/fleet-service) | Node/TypeScript | All ship *actions*: orbit, dock, navigate, extract, survey, refuel, deliver. Stateless |
 | [st-gateway](https://github.com/V-M-Pioneer-Trading/st-gateway) | Node/TypeScript | The only door to the SpaceTraders API: one global rate budget, priority queueing, centralized retries |
-| [auth-service](https://github.com/V-M-Pioneer-Trading/auth-service) | Go / SQLite | The only holder of the SpaceTraders account and agent tokens: hands the agent token to st-gateway, detects universe resets and re-registers |
+| [auth-service](https://github.com/V-M-Pioneer-Trading/auth-service) | Go / SQLite | The only holder of the SpaceTraders account and agent tokens: hands the agent token to st-gateway, detects universe resets and re-registers. Also the only verifier of Clerk tokens: every other backend asks it, over `POST /auth/v1/introspect`, what a token carries |
 | [automation-service](https://github.com/V-M-Pioneer-Trading/automation-service) | Node/TypeScript / Postgres | The deterministic autopilot engine: planner, per-ship state machines, anomaly checks, event log |
 | [ai-service](https://github.com/V-M-Pioneer-Trading/ai-service) | Node/TypeScript | The AI supervisor: receives anomalies, runs a bounded OpenAI tool loop that may tune knobs or trigger replans |
 | [command-interface](https://github.com/V-M-Pioneer-Trading/command-interface) | React / Vite | LCARS-themed operator dashboard: fleet map, mining controls, autopilot switch, observability panels |
@@ -130,11 +134,12 @@ sees a game credential. Arming the autopilot is a statement of intent
 (`{ mode }`), not a hand-over of a token.
 
 What every other request carries instead is the operator's **Clerk session**,
-verified locally by each backend against a public key and forwarded to
-st-gateway, which derives queue priority from it. See
-[auth-design.md](design/auth-design.md), decisions 4–6. (Local verification is
-still how it works today; [decision 21](design/auth-design.md#21-one-verifier-every-service-asks-auth-service-what-a-token-carries)
-moves it into auth-service and has not shipped.)
+forwarded as it arrived and verified once, by auth-service, on every guarded
+request. Each backend declares what a route needs and compares it with
+auth-service's answer; st-gateway derives a queue lane from the same answer,
+never a verdict. See [auth-design.md](design/auth-design.md), decisions 5, 6 and
+[21](design/auth-design.md#21-one-verifier-every-service-asks-auth-service-what-a-token-carries),
+and [token-introspection.md](design/token-introspection.md) for the answers.
 
 ### One gateway owns the rate budget
 

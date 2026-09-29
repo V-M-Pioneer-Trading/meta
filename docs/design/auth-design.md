@@ -325,7 +325,9 @@ and this paragraph is the only thing about it that has changed. Rollout:
 21 unchanged: `scope` rather than `role`, the claim sourced from
 `public_metadata` and never `unsafe_metadata`, and session-token customisation
 here against a JWT template in stagehopper. 21 moves **who verifies**, not what
-is verified or where a permission lives.*
+is verified or where a permission lives. Dated 2026-09-29: decision 21 has
+shipped in every service, so this decision is superseded in practice as well
+as on paper, and no service but auth-service verifies a token.*
 
 ### 5. st-gateway injects the agent token; nothing else holds it
 
@@ -629,7 +631,9 @@ stack is manual and is the owner's, so the merge of that PR does not change the
 host: until the apply, auth-service publishes no host port and both chains are
 as described above; after it, the port is published on loopback and
 `authnet-out-guard` has three rules instead of two. Whoever reads this should
-check the live host rather than infer the state from this file.*
+check the live host rather than infer the state from this file. Dated
+2026-09-29: applied 2026-09-20 23:35 UTC, and introspection has been live over
+that loopback port since.*
 
 ### 10. Verification is networkless, and local development uses its own keypair
 
@@ -681,7 +685,10 @@ forbids the obvious shortcut: a migrated service must not keep local
 verification as a fallback for when the center is unreachable, because that is
 a second verification path that answers when the first will not — see decision
 21's rejected alternatives. Rollout:
-[meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80).*
+[meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80). Dated
+2026-09-29: shipped as described — auth-service is the only service holding
+`CLERK_JWT_KEY` and the only suite checking a real signature; every other
+suite stubs the center.*
 
 ### 11. ai-service authenticates with a shared secret, not a Clerk identity
 
@@ -875,7 +882,8 @@ and stays where the route is. The one visible addition is default-deny: after
 required scope` instead of being served, which is what makes another
 [meta#71](https://github.com/V-M-Pioneer-Trading/meta/issues/71) structurally
 impossible. Rollout:
-[meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80).*
+[meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80). Dated
+2026-09-29: shipped with decision 21, tiers unchanged.*
 
 ### 19. automation-service authenticates its own agent/fleet-service calls with a Clerk M2M token
 
@@ -982,7 +990,8 @@ arrived. `CLERK_M2M_SECRET_KEY` stays with
 automation-service; only `CLERK_JWT_KEY` moves. Rollout:
 [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80), step 8, whose
 one-hour shadow run is the only proof of the M2M path — the fleet is disarmed,
-so nothing else exercises it.*
+so nothing else exercises it. Dated 2026-09-29: shipped with decision 21; the
+M2M path is unproven in production pending that shadow run.*
 
 ### 20. `universe:refresh`: a third scope, for spending the rate budget without moving the fleet
 
@@ -1033,6 +1042,31 @@ says what will be true, never what is. Check meta#80's checkboxes before
 believing otherwise — this project has shipped documentation claiming a state
 the code was not in more than once, and the remedy is to date the claim and
 name the tracker.*
+
+*Note, 2026-09-29: shipped in full. Every service asks the center and verifies
+nothing locally: fleet-service, automation-service and st-gateway through
+ts-introspection-client 1.1.2 — st-gateway as a lane deriver only, with a
+250 ms timeout in place of the contract's 1 s because it decides a lane and
+never a verdict — agent-service through its Go client in `src/introspection`,
+and navigation-service through its Java client, whose route annotations are
+checked by an audit at startup. Only auth-service holds `CLERK_JWT_KEY`;
+[infrastructure#92](https://github.com/V-M-Pioneer-Trading/infrastructure/pull/92)
+stops provisioning it to every other stack, merged with its `terraform apply`
+pending. automation-service no longer accepts `X-Service-Secret` (see the note
+under decision 11). Every client vendors fixture version 4, and so does
+auth-service. The work landed as auth-service#3 and #9,
+ts-introspection-client#1 through #5, fleet-service#21, #22 and #25,
+agent-service#24, #27 and #29, navigation-service#22 and #24,
+automation-service#29, st-gateway#11, infrastructure#86 through #92, and
+meta#82 through #92. One cost is wider in practice than *Accepted costs* below
+puts it: auth-service down refuses not only mutations but every request that
+carries a token, public `GET`s included (fixture case
+`token-on-public-get-while-center-is-down`), which is most of what the
+signed-in dashboard sends; only tokenless reads survive, and
+automation-service's, whose `GET`s ignore credentials by declaration. Decision 4 is superseded in
+practice, not only on paper, and so is decision 10's "every service": the rest
+of 10 now lives in auth-service alone. See their notes. Everything above
+and below is kept as written.*
 
 **auth-service becomes the only component that verifies a Clerk token.** Every
 other service sends the token it received to auth-service, gets back the

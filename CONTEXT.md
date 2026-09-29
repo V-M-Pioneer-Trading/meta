@@ -10,7 +10,8 @@ decisions; this file only fixes vocabulary.
   **session** whose `scope` claim lists their permissions.
 - **Machine** — a non-human caller with its own Clerk identity
   (automation-service). Its token's `sub` starts `mch_`; an operator's starts
-  `user_`. st-gateway uses that distinction to pick a queue.
+  `user_`. The center reports that distinction as **`kind`**, and st-gateway
+  picks a queue from it.
 - **Visitor** — anyone with no session. May read what a backend serves
   anonymously; may not cause a live upstream call except where a backend
   explicitly allows it.
@@ -36,20 +37,19 @@ decisions; this file only fixes vocabulary.
 
 *The next three names are fixed by
 [decision 21](docs/design/auth-design.md#21-one-verifier-every-service-asks-auth-service-what-a-token-carries),
-decided 2026-09-20 and **not shipped** — every service still verifies tokens
-itself. They are listed here so the vocabulary is agreed before the code
-arrives.*
+decided 2026-09-20 and shipped in every service by 2026-09-29: no service
+but auth-service verifies a token.*
 
 - **The center** — auth-service in its second role: the one component that
-  verifies a Clerk token. Distinct from the **vault**, its first role, which
-  holds the game and account tokens. Same process, same port, different job.
+  verifies a Clerk token, and the only one holding the Clerk public key.
+  Distinct from the **vault**, its first role, which holds the game and
+  account tokens. Same process, same port, different job.
 - **Introspection** — a service asking the center whether a token is valid and
   what scopes it carries, instead of checking the signature itself. The
   contract and the exact answers are in
   [token-introspection.md](docs/design/token-introspection.md).
 - **`kind`** — what the center says a verified caller is: `operator` or
-  `machine`. It replaces reading the `sub` prefix, which after decision 21 only
-  the center does.
+  `machine`. It replaces reading the `sub` prefix, which only the center does.
 
 ## Traffic
 
@@ -57,6 +57,7 @@ arrives.*
   than being answered from a cache or a local table.
 - **Refresh** — an explicit request to discard a cached copy and live-fetch.
 - **Priority** / **lane** — which of st-gateway's two queues a call waits in:
-  `interactive` (an operator's session) or `background` (a machine, a visitor,
-  or anything that failed verification). Derived by the gateway; never
-  declared by a caller.
+  `interactive` (the center answered: an active `operator`) or `background`
+  (anything else: a machine, a visitor, an inactive token, or no answer from
+  the center at all). Derived by the gateway from the center's answer; never
+  declared by a caller, and never a reason to reject one.
