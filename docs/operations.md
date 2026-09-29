@@ -95,15 +95,17 @@ curl -s -o /dev/null -w '%{http_code} %{content_type}\n' \
 A real route answers `application/json`; a missing one answers `text/html` with
 the same 200.
 
-Curling an authenticated route needs a token. Locally, every backend that
-verifies a Clerk session checks it against the committed development keypair in
-`dev-keys/`, which compose mounts into the backends that use it, and
-`node scripts/mint-dev-token.mjs` signs a token against its private half. That is
-st-gateway and auth-service, the two backends that still verify locally and
-mount `dev-keys/`; the rest ask auth-service (meta#80). automation-service also
-keeps the mount, only for its outbound M2M signer. The one
-alternative is setting `CLERK_JWT_KEY` in `.env` to a real Clerk instance's
-public key, which overrides the mounted file and means signing in for real. See
+Curling an authenticated route needs a token. Locally, exactly one backend
+checks it: auth-service, against the committed development keypair in
+`dev-keys/`, which compose mounts into it. Every other backend, st-gateway
+included, holds no key and asks auth-service; compose hands each of them
+`AUTH_INTROSPECTION_URL` and `AUTH_INTROSPECTION_SECRET`, the secret written as
+the same expression auth-service gets so one `.env` line overrides both ends.
+`node scripts/mint-dev-token.mjs` signs a token against the private half.
+automation-service mounts `dev-keys/` too, for a different reason: it signs its
+own outbound M2M token with that private half. The one alternative is setting
+`CLERK_JWT_KEY` in `.env` to a real Clerk instance's public key, which
+overrides auth-service's mounted file and means signing in for real. See
 [dev-keys/README.md](../dev-keys/README.md) for why that key is committed, why
 it is safe, and how to narrow the scopes it carries.
 
@@ -196,6 +198,15 @@ auth-service publishes nothing, afterwards it publishes on loopback only. Check
 the host (`docker port auth-service`, `iptables -S authnet-out-guard`) rather
 than assuming either state.*
 
+*Note, 2026-09-29 — every backend now asks auth-service and verifies nothing
+itself, so only auth-service needs the Clerk public key.
+[infrastructure#92](https://github.com/V-M-Pioneer-Trading/infrastructure/pull/92)
+stops provisioning `CLERK_JWT_KEY` to every other stack, st-gateway's `docker
+run` inside agent-service's included. It is merged and **its apply is
+pending**: until then those containers are still handed a key they verify
+nothing with. After it, `CLERK_JWT_KEY` exists on the host in one container's
+environment, auth-service's.*
+
 ai-service is **not deployed anywhere** — see the "Deployment gaps" note
 below.
 
@@ -283,6 +294,33 @@ service an HTTPS page cannot address, and ai-service's `http://localhost`
 default is one, so in production it is not listed at all rather than shown as
 down. `MONITORED_SERVICES` is the list after that filter. auth-service is not
 in `SERVICE_DEFINITIONS` yet.
+
+### When auth-service is down
+
+Since [decision 21](design/auth-design.md#21-one-verifier-every-service-asks-auth-service-what-a-token-carries)
+that is two outages in one process, and they arrive at different speeds.
+
+- **Verification stops at once.** Every request that carries a token answers
+  `503 the authentication service could not process this request` — every
+  guarded route, and also a public `GET` sent with a token, which is every call
+  the signed-in dashboard makes. A request with no `Authorization` header to a
+  public route never reaches auth-service and keeps working, so the signed-out
+  view still reads. The autopilot's calls carry its M2M token, so it stops too.
+- **st-gateway lanes everything `background`** and keeps proxying; it never
+  rejects on auth-service's account. An auth-service that hangs rather than
+  refuses costs each credentialed call up to 250 ms before the gateway settles.
+- **The game token follows.** st-gateway serves the agent token from its cache
+  (`AUTH_SERVICE_TOKEN_CACHE_MS`, 30 s by default); once that expires, every
+  game call answers `503 auth-service unavailable: cannot obtain a SpaceTraders
+  credential`. That is distinct from `SpaceTraders credential not configured`,
+  which means auth-service answered and holds no token — an operator's problem,
+  not an outage.
+
+The fix is auth-service itself (`docker logs auth-service` on the host).
+Nothing downstream needs touching, and nothing downstream is to be given the
+Clerk key as a stopgap: a service that verifies locally when auth-service does
+not answer is the second verification path auth-design decisions 10 and 21
+forbid.
 
 ## CI and deploys
 

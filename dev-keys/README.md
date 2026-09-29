@@ -5,8 +5,9 @@ deliberate, and it is safe, because nothing in production trusts it.
 
 ## Why this exists
 
-Every backend service verifies Clerk sessions **networklessly** — it holds a
-public key in `CLERK_JWT_KEY` and checks signatures itself. Local development
+auth-service verifies Clerk sessions for the whole backend, **networklessly** —
+it holds a public key in `CLERK_JWT_KEY` and checks signatures itself, and
+every other service asks it (auth-design decision 21). Local development
 therefore needs *a* trust anchor, and there were three ways to provide one:
 
 1. Require a Clerk account before `docker compose up` does anything.
@@ -53,13 +54,14 @@ verification path at the receiving end, and still nothing production trusts.
 The **frontend** is a different matter. command-interface uses Clerk's own SDK
 to obtain a session, and that needs a Clerk **development instance** — free,
 separate from production, and created in the Clerk dashboard. Set
-`VITE_CLERK_PUBLISHABLE_KEY` and point the backends' `CLERK_JWT_KEY` at that
+`VITE_CLERK_PUBLISHABLE_KEY` and point auth-service's `CLERK_JWT_KEY` at that
 instance's public key instead of this one.
 
 So: this keypair covers backend development, integration poking and CI. Driving
 the real UI locally needs a Clerk dev instance. There is deliberately no third
 option where the browser fakes a session, for the same reason (2) was rejected.
 
-CI does not use this keypair at all — each service generates an ephemeral pair
-per test run and signs its own tokens, so nothing has to be shared between
+CI does not use this keypair at all. auth-service generates an ephemeral pair
+per test run and signs its own tokens; every other service's suite stubs
+auth-service and signs nothing, so nothing has to be shared between
 repositories.
