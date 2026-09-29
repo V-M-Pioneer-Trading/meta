@@ -704,6 +704,12 @@ deterministic core survives third-party outages. Tracked in
 which automation-service's own broken calls to agent/fleet-service now force
 first; this route can adopt the same mechanism once 19 ships.*
 
+*Note, 2026-09-29: meta#80 step 8 deletes `AI_SERVICE_SECRET` from
+automation-service, so `X-Service-Secret` is going away. ai-service moves to a
+Clerk M2M token, accepted only where `kind === "machine"`
+([meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59)). The text
+above is the original decision, kept as written.*
+
 ### 12. spacetraders sign-in: restricted, Google-only, headless
 
 Sign-up is set to **restricted** — there is one legitimate operator, so a public
@@ -1130,6 +1136,11 @@ sessions and automation-service's M2M token
 The vault's shared secret and ai-service's `X-Service-Secret`
 ([decision 11](#11-ai-service-authenticates-with-a-shared-secret-not-a-clerk-identity))
 are untouched by this work.
+
+*Note, 2026-09-29: that last claim no longer holds. Step 8 of meta#80 deletes
+`AI_SERVICE_SECRET` from automation-service, and ai-service moves to a Clerk M2M
+token fenced by `kind === "machine"` (meta#59); see the note under decision 11.
+The vault's shared secret is still untouched.*
 
 **`azp` is deliberately not checked** (owner's decision, 2026-09-20). See *Not
 in this epic* for the reasoning and for what would reopen it.

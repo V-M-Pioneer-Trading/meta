@@ -19,7 +19,7 @@ services:
       AUTH_SERVICE_URL: http://auth-service:80
       AUTH_SERVICE_SHARED_SECRET: ${AUTH_SERVICE_SHARED_SECRET:-local-dev-auth-service-secret}
       # decision 2: priority derived from a verified Clerk identity. Same
-      # local trust anchor as every other service — see their comments.
+      # local trust anchor as auth-service — see its comment.
       CLERK_JWT_KEY_FILE: /run/dev-keys/dev-only-do-not-use.pub.pem
       CLERK_JWT_KEY: ${CLERK_JWT_KEY:-}
     volumes:
@@ -126,7 +126,12 @@ services:
       SQLITE_DB_PATH: /data/auth.db
       ST_GATEWAY_URL: http://st-gateway:3002
       CORS_ALLOWED_ORIGIN: http://localhost:3000
-      # Same local trust anchor as the other services — see their comments.
+      # Local trust anchor: the committed development keypair (see
+      # dev-keys/README.md), bind-mounted below so a fresh clone runs the real
+      # verification path with no Clerk account. To drive the actual UI, set
+      # CLERK_JWT_KEY in .env to a Clerk dev instance's public key — an inline
+      # value wins over the file. There is no "auth off" mode. st-gateway
+      # verifies against the same anchor; every other service asks this one.
       CLERK_JWT_KEY_FILE: /run/dev-keys/dev-only-do-not-use.pub.pem
       CLERK_JWT_KEY: ${CLERK_JWT_KEY:-}
       # Gates GET /auth/v1/token (st-gateway's only way to fetch the agent
@@ -193,11 +198,11 @@ services:
       # included; override both at once with AUTH_INTROSPECTION_SECRET in .env.
       AUTH_INTROSPECTION_URL: http://auth-service:80/auth/v1/introspect
       AUTH_INTROSPECTION_SECRET: ${AUTH_INTROSPECTION_SECRET:-local-dev-introspection-secret}
-      # auth-design.md decision 19: this service is itself a caller of
-      # agent/fleet-service, so it also needs to *sign* something, not just
-      # verify — the private half of the same dev keypair, gated the same
-      # way (inline CLERK_M2M_SECRET_KEY wins over the file, for pointing at
-      # a real Clerk Machine without editing this file).
+      # auth-design.md decision 19: this service signs its own outbound M2M
+      # token for its calls to agent/fleet-service, using the private half of
+      # the dev keypair. An inline CLERK_M2M_SECRET_KEY wins over
+      # DEV_M2M_SIGNING_KEY_FILE, for pointing at a real Clerk Machine without
+      # editing this file.
       DEV_M2M_SIGNING_KEY_FILE: /run/dev-keys/dev-only-do-not-use.key.pem
       CLERK_M2M_SECRET_KEY: ${CLERK_M2M_SECRET_KEY:-}
     volumes:
