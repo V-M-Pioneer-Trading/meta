@@ -631,7 +631,9 @@ stack is manual and is the owner's, so the merge of that PR does not change the
 host: until the apply, auth-service publishes no host port and both chains are
 as described above; after it, the port is published on loopback and
 `authnet-out-guard` has three rules instead of two. Whoever reads this should
-check the live host rather than infer the state from this file.*
+check the live host rather than infer the state from this file. Dated
+2026-09-29: applied 2026-09-20 23:35 UTC, and introspection has been live over
+that loopback port since.*
 
 ### 10. Verification is networkless, and local development uses its own keypair
 
@@ -880,7 +882,8 @@ and stays where the route is. The one visible addition is default-deny: after
 required scope` instead of being served, which is what makes another
 [meta#71](https://github.com/V-M-Pioneer-Trading/meta/issues/71) structurally
 impossible. Rollout:
-[meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80).*
+[meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80). Dated
+2026-09-29: shipped with decision 21, tiers unchanged.*
 
 ### 19. automation-service authenticates its own agent/fleet-service calls with a Clerk M2M token
 
@@ -987,7 +990,8 @@ arrived. `CLERK_M2M_SECRET_KEY` stays with
 automation-service; only `CLERK_JWT_KEY` moves. Rollout:
 [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80), step 8, whose
 one-hour shadow run is the only proof of the M2M path — the fleet is disarmed,
-so nothing else exercises it.*
+so nothing else exercises it. Dated 2026-09-29: shipped with decision 21; the
+M2M path is unproven in production pending that shadow run.*
 
 ### 20. `universe:refresh`: a third scope, for spending the rate budget without moving the fleet
 
@@ -1057,8 +1061,9 @@ automation-service#29, st-gateway#11, infrastructure#86 through #92, and
 meta#82 through #92. One cost is wider in practice than *Accepted costs* below
 puts it: auth-service down refuses not only mutations but every request that
 carries a token, public `GET`s included (fixture case
-`token-on-public-get-while-center-is-down`), which is every call the signed-in
-dashboard makes; only tokenless reads survive. Decision 4 is superseded in
+`token-on-public-get-while-center-is-down`), which is most of what the
+signed-in dashboard sends; only tokenless reads survive, and
+automation-service's, whose `GET`s ignore credentials by declaration. Decision 4 is superseded in
 practice, not only on paper, and so is decision 10's "every service": the rest
 of 10 now lives in auth-service alone. See their notes. Everything above
 and below is kept as written.*

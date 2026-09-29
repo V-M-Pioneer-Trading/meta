@@ -302,10 +302,11 @@ that is two outages in one process, and they arrive at different speeds.
 
 - **Verification stops at once.** Every request that carries a token answers
   `503 the authentication service could not process this request` — every
-  guarded route, and also a public `GET` sent with a token, which is every call
-  the signed-in dashboard makes. A request with no `Authorization` header to a
-  public route never reaches auth-service and keeps working, so the signed-out
-  view still reads. The autopilot's calls carry its M2M token, so it stops too.
+  guarded route, and also a public `GET` sent with a token, which is most of
+  what the signed-in dashboard sends. A request with no `Authorization` header
+  to a public route never reaches auth-service and keeps working, so the
+  signed-out view still reads; so do automation-service's `GET`s, which ignore
+  credentials by declaration. The autopilot's calls carry its M2M token, so it stops too.
 - **st-gateway lanes everything `background`** and keeps proxying; it never
   rejects on auth-service's account. An auth-service that hangs rather than
   refuses costs each credentialed call up to 250 ms before the gateway settles.
