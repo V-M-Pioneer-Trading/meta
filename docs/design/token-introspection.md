@@ -451,3 +451,43 @@ conditions every implementation must answer identically.
 - **What the center does internally.** Leeway, issuer checking, the decision
   not to check `azp`, and which library verifies are decision 21's business and
   the center's. A client cannot observe any of them, which is the point.
+
+## Minting a machine token
+
+[Decision 22](auth-design.md#22-auth-service-mints-every-machine-token)
+makes auth-service the only holder of a Clerk Machine Secret Key. A headless
+service that needs a bearer token of its own asks the center for one. This
+section is that contract; it is deliberately small, because the caller side is
+thirty lines in `@v-m-pioneer-trading/introspection-client`
+(`createCentralM2MTokenSource`) and there are two callers.
+
+**Request.** `POST /auth/v1/m2m-token`, empty body, header
+`X-Service-Secret: <the caller's own secret>`. The secret is the caller's
+identity: auth-service maps it to a caller name and to that caller's fixed
+scopes. There is no field in which a caller names itself or asks for a scope.
+The route is bare, on the same listener as `/auth/v1/introspect`, never behind
+Caddy, reached at `localhost:3005` from host-network services.
+
+**Answers.**
+
+| Situation | Status | Body |
+|---|---|---|
+| Known secret, token minted or served from cache | **200** | `{"token": "<jwt>", "expires_at": <unix seconds>}` |
+| Missing, empty or unknown secret | **401** | `{"error": "unknown caller"}` |
+| Clerk cannot mint and no cached token is still valid | **503** | `{"error": "the token could not be minted"}` |
+| Any method but `POST` | **405** | — |
+
+The token is a Clerk M2M JWT (locally, one signed with the dev key) whose
+`sub` is the caller's Machine (`mch_…`, or `mch_local_<caller>` in dev) and
+whose flat `scope` claim holds the caller's scopes. It lives 24 hours. The
+center serves the same token again until half of that has passed, then mints
+a fresh one on the next request; a `401` names no caller and no secret.
+
+**What a caller does.** Fetch the token before the first outbound call and
+cache it. Refresh once half the lifetime has passed. If the refresh fails, keep
+using the cached token until it actually expires, then fail. Use a 1 s
+timeout and retry once after a `503` or a timeout, because the first mint
+after an auth-service restart is the one slow answer. Never persist the token.
+Present it as `Authorization: Bearer <token>` on every outbound call; the
+receiving service sends it to `/auth/v1/introspect` like any other bearer
+token and sees `kind: "machine"`.
