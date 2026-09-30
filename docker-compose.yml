@@ -148,6 +148,23 @@ services:
       # also legal and makes the route answer 401 to everyone, which is
       # production's state until meta#80 step 3 is applied.
       AUTH_INTROSPECTION_SECRET: ${AUTH_INTROSPECTION_SECRET:-local-dev-introspection-secret}
+      # POST /auth/v1/m2m-token (decision 22): auth-service mints every
+      # machine token. Locally it signs them with the private half of the dev
+      # keypair instead of calling Clerk, so they verify against the public
+      # half above. auth-service refuses to start with this AND a Machine key
+      # (one trust anchor per process), so to mint through a real Clerk dev
+      # instance instead, set DEV_M2M_SIGNING_KEY_FILE to empty in .env (the
+      # `-` form below keeps an empty value; only unset takes the default)
+      # and set the two Machine keys there too.
+      DEV_M2M_SIGNING_KEY_FILE: ${DEV_M2M_SIGNING_KEY_FILE-/run/dev-keys/dev-only-do-not-use.key.pem}
+      M2M_MACHINE_KEY_AUTOMATION_SERVICE: ${M2M_MACHINE_KEY_AUTOMATION_SERVICE:-}
+      M2M_MACHINE_KEY_AI_SERVICE: ${M2M_MACHINE_KEY_AI_SERVICE:-}
+      # One secret per caller; the secret alone says who is asking. Each must
+      # differ from both secrets above and from each other, or auth-service
+      # refuses to start. The value a caller sends is the same expression,
+      # default included; override both at once in .env.
+      M2M_CALLER_SECRET_AUTOMATION_SERVICE: ${M2M_CALLER_SECRET_AUTOMATION_SERVICE:-local-dev-m2m-automation-service-secret}
+      M2M_CALLER_SECRET_AI_SERVICE: ${M2M_CALLER_SECRET_AI_SERVICE:-local-dev-m2m-ai-service-secret}
     volumes:
       - ./dev-keys:/run/dev-keys:ro
       - auth_data:/data
@@ -200,16 +217,25 @@ services:
       # included; override both at once with AUTH_INTROSPECTION_SECRET in .env.
       AUTH_INTROSPECTION_URL: http://auth-service:80/auth/v1/introspect
       AUTH_INTROSPECTION_SECRET: ${AUTH_INTROSPECTION_SECRET:-local-dev-introspection-secret}
-      # auth-design.md decision 19: this service signs its own outbound M2M
-      # token for its calls to agent/fleet-service, using the private half of
-      # the dev keypair. An inline CLERK_M2M_SECRET_KEY wins over
-      # DEV_M2M_SIGNING_KEY_FILE, for pointing at a real Clerk Machine without
-      # editing this file.
+      # auth-design.md decision 22: this service no longer signs its own
+      # outbound M2M token. It asks auth-service for one, identified by its
+      # caller secret, which must be the value auth-service gets above: same
+      # expression, default included.
+      AUTH_M2M_TOKEN_URL: http://auth-service:80/auth/v1/m2m-token
+      AUTH_M2M_CALLER_SECRET: ${M2M_CALLER_SECRET_AUTOMATION_SERVICE:-local-dev-m2m-automation-service-secret}
+      # auth-design.md decision 19, still what today's image runs: this service
+      # signs its own outbound M2M token for its calls to agent/fleet-service,
+      # using the private half of the dev keypair. An inline
+      # CLERK_M2M_SECRET_KEY wins over DEV_M2M_SIGNING_KEY_FILE, for pointing
+      # at a real Clerk Machine without editing this file. Both lines, and the
+      # mount below, go with automation-service's migration to the central
+      # minter (decision 22 rollout step 2); until then the image fails to
+      # start without one of them.
       DEV_M2M_SIGNING_KEY_FILE: /run/dev-keys/dev-only-do-not-use.key.pem
       CLERK_M2M_SECRET_KEY: ${CLERK_M2M_SECRET_KEY:-}
     volumes:
-      # Stays, unlike the other migrated services: this one still signs its own
-      # outbound M2M token locally with the dev private key.
+      # Stays until that migration: this service still signs its own outbound
+      # M2M token locally with the dev private key.
       - ./dev-keys:/run/dev-keys:ro
     depends_on:
       auth-service:
@@ -232,6 +258,10 @@ services:
     environment:
       PORT: 3004
       AUTOMATION_SERVICE_URL: http://automation-service:3003/api/automation/v1
+      # Machine token for its calls to automation-service: it asks auth-service
+      # for one, identified by its own caller secret (decision 22).
+      AUTH_M2M_TOKEN_URL: http://auth-service:80/auth/v1/m2m-token
+      AUTH_M2M_CALLER_SECRET: ${M2M_CALLER_SECRET_AI_SERVICE:-local-dev-m2m-ai-service-secret}
       # No sensible default — set in a .env file next to this compose file
       # (see .env.example) or in the shell before `docker compose up`.
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
