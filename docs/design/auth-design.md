@@ -1017,6 +1017,10 @@ being able to arm the autopilot. It is deliberately **not implied** by
 literal", and a superset rule would be a second place authorization lives.
 The operator account simply carries all three.
 
+*Dated 2026-09-30: five, once
+[decision 22](#22-auth-service-mints-every-machine-token) adds `events:write`
+and `planner:advise`.*
+
 Decision 2's "two scopes, split on reversibility" framing stays; this one is
 split on trust level. It is enforced (the objection to `dashboard:view` does
 not apply), lives in the operator's `public_metadata` like the other two, and
@@ -1432,8 +1436,9 @@ and this decision removes it.
   table below and for rotating a caller secret. The only immediate kill
   switch is rotating the Clerk instance signing key, which also signs the
   operator out. With the lifetime chosen below that is a window of up to a
-  day, accepted, because every token is minted on the host and never leaves
-  it: st-gateway builds upstream headers fresh and forwards none.
+  day, accepted, because a token never leaves the host after it arrives:
+  st-gateway builds upstream headers fresh and forwards a caller's
+  `Authorization` only on `POST /register`, which only auth-service calls.
 - **A caller proves who it is with a per-caller secret**, one SSM parameter
   each, sent as `X-M2M-Caller-Secret` to `POST /auth/v1/m2m-token`. The
   header is new on purpose: `X-Service-Secret` was ai-service's retired
@@ -1468,7 +1473,14 @@ and this decision removes it.
   one string. The operator keeps using the planner routes by carrying the
   new scopes in Clerk `public_metadata`, the manual step decision 20 already
   established for `universe:refresh`, and the dev keypair's default token
-  gains them so local development and tests need no change. `POST /events`
+  gains them so local development needs no change. automation-service's
+  suites stub the center with `fleet:control` and assert it on exactly these
+  routes (`auth.test.ts`, `introspectionWiring.test.ts`, `knobClasses.test.ts`),
+  so step 4 updates them. **`planner:advise` on a human session is wider than
+  on a machine**: the `policy`-only fence keys on `kind`, so an operator
+  holding it may retune `model` and `alert` knobs. Accepted while the one
+  operator also holds `fleet:control`; a narrower analyst account must not be
+  given `planner:advise` without revisiting the fence. `POST /events`
   is machine-only in practice; nothing human writes `ai_` events. The routes
   check scope only; `kind` remains an audit field and the knob fence, not a
   second gate, which retires the 2026-09-29 note under decision 11.
@@ -1490,8 +1502,11 @@ and this decision removes it.
   `503`. Clerk billing is thus bounded by auth-service alone whatever a
   caller does. Each caller also caches, refreshes at the same point, prefers
   a stale-but-unexpired token over a failed refresh, and **fetches its first
-  token at startup**, so a wrong caller secret is a loud startup failure in
-  the caller's log, not a `401` on the first tick. Nothing is persisted.
+  token at startup**: a `401` is a configuration error and exits the process
+  loudly; any other failure (`503`, timeout, connection refused) is logged
+  and the caller starts anyway, fetching lazily on first use, so a host reboot
+  during a Clerk outage, or a caller starting before auth-service listens,
+  does not crash-loop it. Nothing is persisted.
 - **One trust anchor per process, chosen globally.** In production every
   enabled caller has a Machine Secret Key, and auth-service calls
   `POST https://api.clerk.com/v1/m2m_tokens`. Locally `DEV_M2M_SIGNING_KEY_FILE`
@@ -1516,8 +1531,9 @@ and this decision removes it.
 - **The caller side is thirty lines** and lives in the shared TypeScript
   package as `createCentralM2MTokenSource({url, secret})`: call the endpoint,
   cache, refresh at the shared point, fall back to the stale token, retry
-  once after a `503` or a timeout because the first mint after an
-  auth-service restart is the one slow answer, and never retry a `401`. The
+  once after a timeout, because the first mint after an auth-service
+  restart is the one slow answer and the retry joins it; never retry a `503`
+  (the center's 10 s spacing makes that another `503` by design) or a `401`. The
   package's name now undersells it; renaming it to `clerk-client` is
   [ts-introspection-client#8](https://github.com/V-M-Pioneer-Trading/ts-introspection-client/issues/8),
   not part of this change.

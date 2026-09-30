@@ -498,13 +498,16 @@ its own 10 s timeout and at least 10 s between failed attempts per caller. A
 `401` names no caller and no secret, and the error bodies are deliberately
 flat: no calling service relays them.
 
-**What a caller does.** Fetch the token **at startup** and fail loudly on a
-`401`, since that is a configuration error, not a transient one. Cache it,
+**What a caller does.** Fetch the token **at startup**: a `401` is a
+configuration error, not a transient one, so exit loudly; on a `503`, a
+timeout or a refused connection, log, start anyway and fetch lazily on first
+use. Cache it,
 refresh at the shared point, and if the refresh fails keep using the cached
 token until it actually expires, then fail. Use a 1 s timeout and retry once,
-immediately, after a `503` or a timeout, because the first mint after an
+immediately, after a timeout, because the first mint after an
 auth-service restart is the one slow answer and the retry joins it; never
-retry a `401`. Never persist the token, never log it or the secret. Present it
+retry a `503` (the center's 10 s spacing makes it another `503`) or a `401`.
+Never persist the token, never log it or the secret. Present it
 as `Authorization: Bearer <token>` on every outbound call; the receiving
 service sends it to `/auth/v1/introspect` like any other bearer token and sees
 `kind: "machine"`.
