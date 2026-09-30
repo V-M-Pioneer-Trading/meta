@@ -258,6 +258,10 @@ services:
     environment:
       PORT: 3004
       AUTOMATION_SERVICE_URL: http://automation-service:3003/api/automation/v1
+      # Machine token for its calls to automation-service: it asks auth-service
+      # for one, identified by its own caller secret (decision 22).
+      AUTH_M2M_TOKEN_URL: http://auth-service:80/auth/v1/m2m-token
+      AUTH_M2M_CALLER_SECRET: ${M2M_CALLER_SECRET_AI_SERVICE:-local-dev-m2m-ai-service-secret}
       # No sensible default — set in a .env file next to this compose file
       # (see .env.example) or in the shell before `docker compose up`.
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
