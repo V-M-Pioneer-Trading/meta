@@ -23,7 +23,7 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const KEY_PATH = join(HERE, "..", "dev-keys", "dev-only-do-not-use.key.pem");
 
-const DEFAULT_SCOPES = ["fleet:control", "agent:reset", "universe:refresh"];
+const DEFAULT_SCOPES = ["fleet:control", "agent:reset", "universe:refresh", "events:write", "planner:advise"];
 
 const flag = (name, fallback) => {
   const at = process.argv.indexOf(`--${name}`);
