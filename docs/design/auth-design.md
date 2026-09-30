@@ -4,10 +4,11 @@
 increment 2 shipped 2026-08-22 (see [Increment 1 — shipped](#increment-1--shipped)
 and [Increment 2 — shipped](#increment-2--shipped) below); increments 3–4 pending.
 [Decision 21](#21-one-verifier-every-service-asks-auth-service-what-a-token-carries),
-added 2026-09-20, reverses decision 4 and is **decided but not shipped** —
-nothing it describes is current behaviour; see
-[meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80) for the
-rollout.*
+added 2026-09-20, reverses decision 4 and shipped 2026-09-29 through
+[meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80).
+[Decision 22](#22-auth-service-mints-every-machine-token), added
+2026-09-30, moves M2M minting into auth-service and is **decided but not
+shipped**; see [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59).*
 
 This document covers **two independent applications** that adopt the same vendor
 for different reasons: this project (`spacetraders`) and `mradomsky/stagehopper`.
@@ -717,6 +718,11 @@ Clerk M2M token, accepted only where `kind === "machine"`
 ([meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59)). The text
 above is the original decision, kept as written.*
 
+*Note, 2026-09-30: superseded in full by
+[decision 22](#22-auth-service-mints-every-machine-token). ai-service
+authenticates with a Clerk identity minted by auth-service, and the routes it
+calls check scope only, not `kind`.*
+
 ### 12. spacetraders sign-in: restricted, Google-only, headless
 
 Sign-up is set to **restricted** — there is one legitimate operator, so a public
@@ -993,6 +999,10 @@ one-hour shadow run is the only proof of the M2M path — the fleet is disarmed,
 so nothing else exercises it. Dated 2026-09-29: shipped with decision 21; the
 M2M path is unproven in production pending that shadow run.*
 
+*Note, 2026-09-30: the shadow run passed. Minting no longer stays a caller's
+concern: [decision 22](#22-auth-service-mints-every-machine-token) moves it
+into auth-service, and `CLERK_M2M_SECRET_KEY` leaves automation-service.*
+
 ### 20. `universe:refresh`: a third scope, for spending the rate budget without moving the fleet
 
 navigation-service's four `POST …/refresh` routes force a live re-walk of
@@ -1006,6 +1016,10 @@ being able to arm the autopilot. It is deliberately **not implied** by
 `fleet:control`: `requireScope` everywhere in the fleet means "carries this
 literal", and a superset rule would be a second place authorization lives.
 The operator account simply carries all three.
+
+*Dated 2026-09-30: five, once
+[decision 22](#22-auth-service-mints-every-machine-token) adds `events:write`
+and `planner:advise`.*
 
 Decision 2's "two scopes, split on reversibility" framing stays; this one is
 split on trust level. It is enforced (the objection to `dashboard:view` does
@@ -1175,6 +1189,9 @@ are untouched by this work.
 `AI_SERVICE_SECRET` from automation-service, and ai-service moves to a Clerk M2M
 token fenced by `kind === "machine"` (meta#59); see the note under decision 11.
 The vault's shared secret is still untouched.*
+
+*Dated 2026-09-30: the fence is gone, the routes check scope only; see
+[decision 22](#22-auth-service-mints-every-machine-token).*
 
 **`azp` is deliberately not checked** (owner's decision, 2026-09-20). See *Not
 in this epic* for the reasoning and for what would reopen it.
@@ -1383,8 +1400,185 @@ most. Rollback is redeploying the previous image tag.
   this Clerk instance. Moving to a production Clerk instance closes the rest
   without code.
 - **ai-service moving to a Clerk M2M token**
-  ([meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59)). Do it
-  when ai-service deploys.
+  ([meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59)). Decided
+  as [decision 22](#22-auth-service-mints-every-machine-token).
+
+### 22. auth-service mints every machine token
+
+*Status: **decided 2026-09-30; not shipped.** Today automation-service mints
+its own Clerk M2M token exactly as
+[decision 19](#19-automation-service-authenticates-its-own-agentfleet-service-calls-with-a-clerk-m2m-token)
+describes, and ai-service sends no credential at all. The rollout is tracked in
+[meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59). Every
+sentence below says what will be true, never what is.*
+
+Decision 19 left minting "a caller's concern": each headless service holds a
+Clerk Machine Secret Key, calls `POST /m2m_tokens` itself, and caches the
+result. That was one service. ai-service is the second, and the moment there
+are two the choice is between copying `m2mToken.ts`, publishing it as a
+package, or moving it. **It moves.** auth-service is the one process that
+already holds Clerk material (decision 21 made it the sole verifier), and it
+is the one place a Clerk secret key is allowed to live: after
+[meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80) step 10 the
+only Clerk material outside auth-service is automation-service's Machine key,
+and this decision removes it.
+
+**The shape.**
+
+- **One Clerk Machine per caller**, `automation-service` and `ai-service`.
+  auth-service holds every Machine Secret Key. A token's `sub` therefore still
+  names the caller, so audit rows differ and one Machine can be disabled
+  without touching the other. A single shared Machine minting with a
+  `svc` claim was declined for exactly that loss. "Disabled" means **no new
+  mints**: the center verifies a JWT offline against the instance key and
+  never asks Clerk whether a Machine still exists, so a token already issued
+  stays valid until its `exp`. The same holds for removing a scope from the
+  table below and for rotating a caller secret. The only immediate kill
+  switch is rotating the Clerk instance signing key, which also signs the
+  operator out. With the lifetime chosen below that is a window of up to a
+  day, accepted, because a token never leaves the host after it arrives:
+  st-gateway builds upstream headers fresh and forwards a caller's
+  `Authorization` only on `POST /register`, which only auth-service calls.
+- **A caller proves who it is with a per-caller secret**, one SSM parameter
+  each, sent as `X-M2M-Caller-Secret` to `POST /auth/v1/m2m-token`. The
+  header is new on purpose: `X-Service-Secret` was ai-service's retired
+  shared secret to automation-service, and reusing the name would make the
+  three places this document says it "is going away" false. The secret alone
+  identifies the caller; there is no `caller` field in the body to forge, and
+  the comparison is constant-time, as introspection's already is. Reusing
+  the introspection secret was declined because every verifier would then be
+  able to mint, and one secret for all callers was declined because any
+  caller could then mint as any other. auth-service refuses to start if a
+  caller secret equals the vault secret, the introspection secret, or
+  another caller's secret, the same rule it already applies to its two
+  existing secrets. A caller whose secret is unset or empty is **disabled**:
+  its requests get `401`, an empty header never matches it, and the rest of
+  the service (vault, introspection) is unaffected, so provisioning
+  ai-service's secret before ai-service exists costs nothing and forgetting
+  it takes nothing else down.
+- **Scopes are a fixed table inside auth-service**, keyed by caller:
+  `automation-service` gets `fleet:control`; `ai-service` gets `events:write
+  planner:advise`. A caller requests nothing. Changing what a machine may do
+  is an auth-service pull request, which is where that review belongs.
+  `events:write` and `planner:advise` are the fourth and fifth scopes after
+  [decision 20](#20-universerefresh-a-third-scope-for-spending-the-rate-budget-without-moving-the-fleet);
+  they exist so that a leaked ai-service token can post `ai_` events and
+  advise the planner, and cannot arm, pause, abort or move a ship.
+  automation-service's `POST /events` requires `events:write`;
+  `POST /planner/replan` and `PUT /planner/knobs/:name` require
+  `planner:advise`; a machine caller stays fenced to `policy` knobs by `kind`
+  exactly as before. **One literal per route, as decision 20 requires**:
+  `fleet:control` does not imply either new scope, there is no "either
+  scope" rule at the route, and `requireScope` in every client keeps taking
+  one string. The operator keeps using the planner routes by carrying the
+  new scopes in Clerk `public_metadata`, the manual step decision 20 already
+  established for `universe:refresh`, and the dev keypair's default token
+  gains them so local development needs no change. automation-service's
+  suites stub the center with `fleet:control` and assert it on exactly these
+  routes (`auth.test.ts`, `introspectionWiring.test.ts`, `knobClasses.test.ts`),
+  so step 4 updates them. **`planner:advise` on a human session is wider than
+  on a machine**: the `policy`-only fence keys on `kind`, so an operator
+  holding it may retune `model` and `alert` knobs. Accepted while the one
+  operator also holds `fleet:control`; a narrower analyst account must not be
+  given `planner:advise` without revisiting the fence. `POST /events`
+  is machine-only in practice; nothing human writes `ai_` events. The routes
+  check scope only; `kind` remains an audit field and the knob fence, not a
+  second gate, which retires the 2026-09-29 note under decision 11.
+- **Tokens live 24 hours** (`seconds_until_expiration`, to be confirmed
+  against a live token before the first production mint, since decision 19
+  validated only the default hour). At $0.001 per mint and a refresh at half
+  the lifetime this is two mints per caller per day.
+- **Both sides cache, and both use the same refresh point**: `iat + (exp -
+  iat) / 2`, read from the token itself, so the center and a caller agree
+  without sharing a clock. auth-service keeps one token per caller in memory
+  and serves it again until that point, then mints on the next request. A
+  mint is **detached and single-flight**: it runs under its own 10 s
+  timeout, not the request's, so a caller giving up after 1 s does not
+  cancel it, a retry joins it, and a token that arrives after the caller
+  left is still cached. Failed attempts are spaced at least 10 s apart per
+  caller so a Clerk outage does not turn every scheduler tick into a Clerk
+  call. If a mint fails and the cached token has not expired, the cached
+  token is served; only with nothing valid in hand does the center answer
+  `503`. Clerk billing is thus bounded by auth-service alone whatever a
+  caller does. Each caller also caches, refreshes at the same point, prefers
+  a stale-but-unexpired token over a failed refresh, and **fetches its first
+  token at startup**: a `401` is a configuration error and exits the process
+  loudly; any other failure (`503`, timeout, connection refused) is logged
+  and the caller starts anyway, fetching lazily on first use, so a host reboot
+  during a Clerk outage, or a caller starting before auth-service listens,
+  does not crash-loop it. Nothing is persisted.
+- **One trust anchor per process, chosen globally.** In production every
+  enabled caller has a Machine Secret Key, and auth-service calls
+  `POST https://api.clerk.com/v1/m2m_tokens`. Locally `DEV_M2M_SIGNING_KEY_FILE`
+  points at the committed dev private key (decision 10) and auth-service signs
+  the same JWT itself, `sub` set to `mch_local_<caller>`, so callers have one
+  code path everywhere and automation-service's local signing source is
+  deleted. The selector is global: an enabled caller without a Machine key
+  when no dev key is set, or a dev key set alongside any Machine key, is a
+  startup error. A production process can never fall back to the dev key for
+  one caller, and never quietly serve `503` for a missing key.
+- **This is auth-service's first outbound call to the internet.** Until now
+  its only outbound call was to st-gateway on `authnet`; decision 21 kept
+  verification offline on purpose. Minting reaches `api.clerk.com`, so the
+  vault container now depends on egress and on `authnet`'s DNS, the same DNS
+  that broke silently on 2026-08-23 while `/health` stayed green. It is a
+  background dependency, not a per-request one: with 24 h tokens and both
+  caches, Clerk being unreachable costs nothing for up to half a day. Decision
+  9's invariant that `GET /auth/v1/token` never gets a Caddy route at any
+  method now covers `POST /auth/v1/m2m-token` too; the Caddyfile routes exact
+  paths, so nothing exposes it today, and the guard is the secret plus that
+  invariant.
+- **The caller side is thirty lines** and lives in the shared TypeScript
+  package as `createCentralM2MTokenSource({url, secret})`: call the endpoint,
+  cache, refresh at the shared point, fall back to the stale token, retry
+  once after a timeout, because the first mint after an auth-service
+  restart is the one slow answer and the retry joins it; never retry a `503`
+  (the center's 10 s spacing makes that another `503` by design) or a `401`. The
+  package's name now undersells it; renaming it to `clerk-client` is
+  [ts-introspection-client#8](https://github.com/V-M-Pioneer-Trading/ts-introspection-client/issues/8),
+  not part of this change.
+- **The contract** for the endpoint is written next to the introspection one
+  in [token-introspection.md](token-introspection.md#minting-a-machine-token).
+  It is not fixture-bound: two callers, one client, and the center's own
+  tests cover it.
+
+**What this supersedes.** Decision 19's "minting stays a caller's concern"
+and its `CLERK_M2M_SECRET_KEY` in automation-service; decision 11 in full,
+since ai-service now authenticates with a Clerk identity; and decision 21's
+one sentence that ai-service is fenced by `kind`. The mint route is bare,
+never behind Caddy, reached at `localhost:3005` by host-network services
+exactly as introspection is. ai-service deploys onto the same host with
+`--network host` ([meta#53](https://github.com/V-M-Pioneer-Trading/meta/issues/53));
+anything else would reopen decision 9.
+
+**Rollout**, additive, so that automation-service is never without a
+working token; tracked in
+[meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59). The lesson
+is meta#80's: new plumbing lands first, the old is removed only once the new
+is proven live.
+
+1. **Center.** auth-service gains the endpoint and is deployed. Its stack
+   gains two Machine keys and two caller secrets. The `automation-service`
+   Machine key is **copied** into the new parameter, not rotated yet: the
+   running automation-service still mints with it, and rotating now would
+   stop the autopilot within an hour. The automation-service stack **adds**
+   `AUTH_M2M_TOKEN_URL` and `AUTH_M2M_CALLER_SECRET` and **keeps**
+   `CLERK_M2M_SECRET_KEY`, because automation-service's CI redeploys by
+   re-running the current bootstrap document, so the image and the document
+   must each work with the other's state.
+2. **First caller.** The client in the package; automation-service migrated
+   to it, reading `AUTH_M2M_*` and ignoring `CLERK_M2M_SECRET_KEY`; deployed;
+   proven with a short shadow run, the only production exercise of the M2M
+   path.
+3. **Remove the old key.** The automation-service stack drops
+   `CLERK_M2M_SECRET_KEY`, its parameter and its grant, then the
+   `automation-service` Machine key is rotated and the auth-service stack
+   re-applied with the new value. Rotating last also retires the copy that
+   passed through a terminal and the old parameter's versions in state.
+4. **Scopes and ai-service.** The two new scopes on the automation routes,
+   the operator's `public_metadata` and the dev token defaults updated
+   first; ai-service's client wired. Deploying ai-service itself stays
+   meta#53.
 
 ## New repository: `auth-service`
 
@@ -1504,10 +1698,9 @@ no shared code — and can land at any point.
 - [meta#58](https://github.com/V-M-Pioneer-Trading/meta/issues/58) — move the
   whole host off `--network host` onto user-defined bridges, converging
   production with `docker compose`, which already uses service-name DNS.
-- [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59) — replace the
-  ai-service shared secret with Clerk M2M tokens. Superseded in priority by
-  [decision 19](#19-automation-service-authenticates-its-own-agentfleet-service-calls-with-a-clerk-m2m-token),
-  which needs the same mechanism sooner, for automation-service itself.
+- [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59) — ai-service's
+  Clerk M2M token, now [decision 22](#22-auth-service-mints-every-machine-token):
+  auth-service mints every machine token. Decided, not shipped.
 - **Moving the credential vault into st-gateway**, so the game token lives only
   where it is used. Agreed in principle, deliberately **not** part of
   [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80): it ports
