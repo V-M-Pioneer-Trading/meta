@@ -102,8 +102,10 @@ included, holds no key and asks auth-service; compose hands each of them
 `AUTH_INTROSPECTION_URL` and `AUTH_INTROSPECTION_SECRET`, the secret written as
 the same expression auth-service gets so one `.env` line overrides both ends.
 `node scripts/mint-dev-token.mjs` signs a token against the private half.
-automation-service mounts `dev-keys/` too, for a different reason: it signs its
-own outbound M2M token with that private half. The one alternative is setting
+automation-service and ai-service hold no key either: auth-service signs their
+machine tokens locally with that private half (decision 22), and compose hands
+each of them `AUTH_M2M_TOKEN_URL` and `AUTH_M2M_CALLER_SECRET`. The one
+alternative is setting
 `CLERK_JWT_KEY` in `.env` to a real Clerk instance's public key, which
 overrides auth-service's mounted file and means signing in for real. See
 [dev-keys/README.md](../dev-keys/README.md) for why that key is committed, why
