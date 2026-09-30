@@ -249,14 +249,34 @@ reason.
 ## Conformance
 
 [`fixtures/introspection.json`](../../fixtures/introspection.json) is the
-source of truth: forty conditions for a calling service, plus twelve for
-st-gateway's lane policy — fifty-two in all — each with the center response
+source of truth: forty-one conditions for a calling service, plus thirteen for
+st-gateway's lane policy — fifty-four in all — each with the center response
 that produces it and the answer expected. It also fixes the names three
 implementations have to agree on — the endpoint, the form field, the
 `X-Introspection-Secret` header, `AUTH_INTROSPECTION_URL` and
 `AUTH_INTROSPECTION_SECRET`, the 1 s timeout and the zero retries.
 
-**The fixture is versioned, and `version` is now `4`.** Version 4
+**The fixture is versioned, and `version` is now `5`.** Version 5
+(2026-09-30, [ts-introspection-client#6](https://github.com/V-M-Pioneer-Trading/ts-introspection-client/issues/6))
+adds one calling-service case and one gateway case in which the center's
+answer is JSON that names the **same top-level key twice** — `sub` twice, with
+two different users — and changes none. That is a malformed answer, like an
+unparseable body: a calling service answers `503 the authentication service
+could not process this request`, the gateway lanes `background`, and the
+center is called once. Go and Java already refuse such a body (a duplicate
+check over `json.Decoder` in agent-service, Jackson
+`STRICT_DUPLICATE_DETECTION` in navigation-service); the TS client read it
+with `JSON.parse`, where the last value wins, and proceeded as the second
+`sub`. It is not a bypass, since the center is trusted and local; it is a
+divergence between clients, and three implementations must agree on what
+malformed means. The center marshals a struct and never produces a duplicated
+key, so these bodies are a client's obligation only. Re-vendor order:
+ts-introspection-client first, then agent-service, navigation-service and
+auth-service. auth-service's center test cannot produce a duplicate key by
+construction, so it accounts for the case as unproducible rather than
+running it.
+
+Version 4
 (2026-09-26) adds three calling-service cases and one gateway case in which
 the request carries **two `Authorization` lines** — two bearer credentials,
 or a bearer credential and an empty line — and changes none. To express them,
@@ -290,8 +310,8 @@ case-insensitive; it
 changes no existing case and removes none. auth-service's own
 vendored copy pins **version 1**, at meta commit `358231f`, and is re-vendored
 at **step 11** of [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80);
-it stays valid in the meantime because versions 2, 3 and 4 only add cases a
-*client* answers, and auth-service is the center. Version 3's bodies are not
+it stays valid in the meantime because versions 2, 3, 4 and 5 only add cases a
+*client* answers, and auth-service is the center. Version 3's and version 5's bodies are not
 producible by the center at all, so its fixture test must classify them as
 client-only when it re-vendors. A copy is allowed to lag the original;
 it is never allowed to lead it.
