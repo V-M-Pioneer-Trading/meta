@@ -28,7 +28,8 @@ node scripts/mint-dev-token.mjs
 ```
 
 Prints an `Authorization` header value good for one hour carrying every scope the
-backends know (`fleet:control`, `agent:reset`, `universe:refresh`).
+backends know (`fleet:control`, `agent:reset`, `universe:refresh`,
+`events:write`, `planner:advise`; the last two per auth-design decision 22).
 No dependencies — it uses `node:crypto` only. To narrow it:
 
 ```bash
