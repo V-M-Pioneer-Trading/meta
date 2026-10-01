@@ -7,8 +7,8 @@ and [Increment 2 — shipped](#increment-2--shipped) below); increments 3–4 pe
 added 2026-09-20, reverses decision 4 and shipped 2026-09-29 through
 [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80).
 [Decision 22](#22-auth-service-mints-every-machine-token), added
-2026-09-30, moves M2M minting into auth-service and is **decided but not
-shipped**; see [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59).*
+2026-09-30, moves M2M minting into auth-service and shipped 2026-10-01; see
+[meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59).*
 
 This document covers **two independent applications** that adopt the same vendor
 for different reasons: this project (`spacetraders`) and `mradomsky/stagehopper`.
@@ -1411,6 +1411,20 @@ its own Clerk M2M token exactly as
 describes, and ai-service sends no credential at all. The rollout is tracked in
 [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59). Every
 sentence below says what will be true, never what is.*
+
+*Dated 2026-10-01: shipped. auth-service mints for both callers from Clerk
+Machines (auth-service#11); automation-service holds no Clerk key and fetches
+its token at startup (automation-service#32), proven by a shadow run with 1185
+introspections and no rejection; its own Machine key parameter is destroyed
+and the key rotated (infrastructure#100, #101); the three routes take
+`events:write` and `planner:advise` (automation-service#34), the knob editor
+gates on `planner:advise` (command-interface#30), and ai-service presents its
+token (ai-service#3), though ai-service itself is still undeployed
+([meta#53](https://github.com/V-M-Pioneer-Trading/meta/issues/53)). The
+24-hour lifetime is confirmed on real Clerk tokens. One correction to the
+rollout as written: re-applying auth-service with a rotated key changes only
+the parameter and restarts nothing, so step 3 re-runs its bootstrap explicitly
+(infrastructure README). Read the rest as a description.*
 
 Decision 19 left minting "a caller's concern": each headless service holds a
 Clerk Machine Secret Key, calls `POST /m2m_tokens` itself, and caches the
