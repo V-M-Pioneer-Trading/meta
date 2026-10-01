@@ -1003,6 +1003,9 @@ M2M path is unproven in production pending that shadow run.*
 concern: [decision 22](#22-auth-service-mints-every-machine-token) moves it
 into auth-service, and `CLERK_M2M_SECRET_KEY` leaves automation-service.*
 
+*Dated 2026-10-01: done; infrastructure#101 removed it and the key was
+rotated.*
+
 ### 20. `universe:refresh`: a third scope, for spending the rate budget without moving the fleet
 
 navigation-service's four `POST …/refresh` routes force a live re-walk of
@@ -1413,10 +1416,10 @@ describes, and ai-service sends no credential at all. The rollout is tracked in
 sentence below says what will be true, never what is.*
 
 *Dated 2026-10-01: shipped. auth-service mints for both callers from Clerk
-Machines (auth-service#11); automation-service holds no Clerk key and fetches
+Machines (auth-service#11, infrastructure#100); automation-service holds no Clerk key and fetches
 its token at startup (automation-service#32), proven by a shadow run with 1185
 introspections and no rejection; its own Machine key parameter is destroyed
-and the key rotated (infrastructure#100, #101); the three routes take
+and the key rotated (infrastructure#101); the three routes take
 `events:write` and `planner:advise` (automation-service#34), the knob editor
 gates on `planner:advise` (command-interface#30), and ai-service presents its
 token (ai-service#3), though ai-service itself is still undeployed
@@ -1714,7 +1717,7 @@ no shared code — and can land at any point.
   production with `docker compose`, which already uses service-name DNS.
 - [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59) — ai-service's
   Clerk M2M token, now [decision 22](#22-auth-service-mints-every-machine-token):
-  auth-service mints every machine token. Decided, not shipped.
+  auth-service mints every machine token. Shipped 2026-10-01.
 - **Moving the credential vault into st-gateway**, so the game token lives only
   where it is used. Agreed in principle, deliberately **not** part of
   [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80): it ports
