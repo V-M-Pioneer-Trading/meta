@@ -1553,7 +1553,11 @@ and this decision removes it.
   (the center's 10 s spacing makes that another `503` by design) or a `401`. The
   package's name now undersells it; renaming it to `clerk-client` is
   [ts-introspection-client#8](https://github.com/V-M-Pioneer-Trading/ts-introspection-client/issues/8),
-  not part of this change.
+  not part of this change. Done 2026-10-01: the repository is
+  [clerk-client](https://github.com/V-M-Pioneer-Trading/clerk-client) and the
+  package `@v-m-pioneer-trading/clerk-client` 2.0.0, same API; references to
+  `ts-introspection-client` elsewhere in this document are historical and its
+  links redirect.
 - **The contract** for the endpoint is written next to the introspection one
   in [token-introspection.md](token-introspection.md#minting-a-machine-token).
   It is not fixture-bound: two callers, one client, and the center's own
