@@ -469,7 +469,8 @@ callers of its client.*
 Decision 22 makes auth-service the only holder of a Clerk Machine Secret
 Key. A headless service that needs a bearer token of its own asks the center
 for one. The caller side is thirty lines in
-`@v-m-pioneer-trading/introspection-client` (`createCentralM2MTokenSource`).
+`@v-m-pioneer-trading/clerk-client` (`createCentralM2MTokenSource`), named
+`@v-m-pioneer-trading/introspection-client` until 2.0.0.
 
 **Request.** `POST /auth/v1/m2m-token`, empty body, header
 `X-M2M-Caller-Secret: <the caller's own secret>`. The secret is the caller's
