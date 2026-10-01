@@ -60,14 +60,14 @@ someone will otherwise make:**
   an unauthenticated `POST` nobody remembered to guard — structurally
   impossible rather than merely unlikely, and it is why the middleware is
   global rather than a decoration applied route by route. **Not a `403`**: the
-  caller has done nothing wrong and can do nothing about it, and
-  automation-service reads a sibling's `403` carrying this document's scope
-  sentence as a `credentials` verdict (automation-service#30), so a
-  `403` would spend a target's slow retry budget and send the operator to
-  check Clerk scopes for a defect in our routing table. The rule is applied
-  **before** the header is
-  read, so a valid token, an expired one and no token at all all get the same
-  answer.
+  caller has done nothing wrong and can do nothing about
+  it. automation-service reads a sibling's `403` carrying this document's
+  scope sentence as a `credentials` verdict and any other `403` as the game's
+  `denied` (automation-service#30), so a `403` would either send the operator
+  to check Clerk scopes or blame the game for a defect in our routing table,
+  and either way spend the ship's slow plumbing budget. The rule is applied
+  **before** the header is read, so a valid token, an expired one and no
+  token at all all get the same answer.
 - **The center's `401` is about us, not about the caller.** It means our
   introspection secret is wrong, missing or rotated. Relaying it as a `401`
   tells an operator to sign in again, forever, against a service that cannot
