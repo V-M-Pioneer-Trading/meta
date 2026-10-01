@@ -223,20 +223,6 @@ services:
       # expression, default included.
       AUTH_M2M_TOKEN_URL: http://auth-service:80/auth/v1/m2m-token
       AUTH_M2M_CALLER_SECRET: ${M2M_CALLER_SECRET_AUTOMATION_SERVICE:-local-dev-m2m-automation-service-secret}
-      # auth-design.md decision 19, still what today's image runs: this service
-      # signs its own outbound M2M token for its calls to agent/fleet-service,
-      # using the private half of the dev keypair. An inline
-      # CLERK_M2M_SECRET_KEY wins over DEV_M2M_SIGNING_KEY_FILE, for pointing
-      # at a real Clerk Machine without editing this file. Both lines, and the
-      # mount below, go with automation-service's migration to the central
-      # minter (decision 22 rollout step 2); until then the image fails to
-      # start without one of them.
-      DEV_M2M_SIGNING_KEY_FILE: /run/dev-keys/dev-only-do-not-use.key.pem
-      CLERK_M2M_SECRET_KEY: ${CLERK_M2M_SECRET_KEY:-}
-    volumes:
-      # Stays until that migration: this service still signs its own outbound
-      # M2M token locally with the dev private key.
-      - ./dev-keys:/run/dev-keys:ro
     depends_on:
       auth-service:
         condition: service_started

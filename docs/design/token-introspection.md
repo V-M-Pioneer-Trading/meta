@@ -464,6 +464,8 @@ This section is outside the normative scope above: it is not pinned by
 `fixtures/introspection.json`, and it binds only auth-service and the two
 callers of its client.*
 
+*Dated 2026-10-01: shipped as written. Read the section as a description.*
+
 Decision 22 makes auth-service the only holder of a Clerk Machine Secret
 Key. A headless service that needs a bearer token of its own asks the center
 for one. The caller side is thirty lines in
