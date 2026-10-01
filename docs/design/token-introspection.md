@@ -64,7 +64,8 @@ someone will otherwise make:**
   automation-service reads a sibling's `403` carrying this document's scope
   sentence as a `credentials` verdict (automation-service#30), so a
   `403` would spend a target's slow retry budget and send the operator to
-  check Clerk scopes for a defect in our routing table. The rule is applied **before** the header is
+  check Clerk scopes for a defect in our routing table. The rule is applied
+  **before** the header is
   read, so a valid token, an expired one and no token at all all get the same
   answer.
 - **The center's `401` is about us, not about the caller.** It means our
