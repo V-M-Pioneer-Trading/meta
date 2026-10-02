@@ -1,0 +1,8 @@
+{
+  "name": "meta-swagger2openapi",
+  "private": true,
+  "description": "Pinned converter for the openapi-sync workflow (meta#26). Installed with npm ci --ignore-scripts in a job that holds no token.",
+  "dependencies": {
+    "swagger2openapi": "7.0.8"
+  }
+}
