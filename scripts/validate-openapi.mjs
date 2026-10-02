@@ -12,7 +12,11 @@
  *      converts 2.0 before proposing;
  *   3. `info.title` and `info.version` are non-empty strings;
  *   4. `paths` is an object with at least one path, each starting with "/";
- *   5. the file name is a lowercase repository name.
+ *   5. the file name is one of the services below: a new service is added here
+ *      in the same pull request that wires its sync (see openapi/README.md);
+ *   6. at least one path carries an HTTP operation;
+ *   7. the file is under 2 MB, and only .json specs and the
+ *      README live in the folder.
  *
  * Zero dependencies and plain node, like validate-fixtures.mjs.
  */
@@ -20,11 +24,19 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
+const SERVICES = new Set(["fleet-service", "agent-service", "navigation-service"]);
+const MAX_BYTES = 2_000_000;
+const OPERATIONS = ["get", "put", "post", "delete", "options", "head", "patch", "trace"];
+
 const dir = join(dirname(fileURLToPath(import.meta.url)), "..", "openapi");
 const errors = [];
 const fail = (file, msg) => errors.push(`${file}: ${msg}`);
 
-const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".json")) : [];
+const entries = existsSync(dir) ? readdirSync(dir) : [];
+for (const name of entries) {
+  if (name !== "README.md" && !name.endsWith(".json")) fail(name, "only <service>.json files and README.md belong in openapi/");
+}
+const files = entries.filter((f) => f.endsWith(".json"));
 for (const file of files) {
   if (!/^[a-z0-9-]+\.json$/.test(file)) fail(file, "name must be <lowercase-repository-name>.json");
   const raw = readFileSync(join(dir, file), "utf8");
@@ -51,6 +63,8 @@ for (const file of files) {
     fail(file, "paths must be an object with at least one path");
   } else {
     for (const p of Object.keys(paths)) if (!p.startsWith("/")) fail(file, `path ${JSON.stringify(p)} must start with "/"`);
+    const hasOperation = Object.values(paths).some((item) => item && typeof item === "object" && OPERATIONS.some((m) => m in item));
+    if (!hasOperation) fail(file, "no path carries an HTTP operation");
   }
 }
 

@@ -23,6 +23,10 @@ jobs:
       # the SHA was, so a reviewer can read the intent and a bump is a visible
       # diff.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # Full history, so the openapi-sync guard below can diff a pull
+          # request against its merge base.
+          fetch-depth: 0
 
       # There is no package.json here and there is not going to be one — the
       # validator is zero-dependency plain node for exactly that reason — so
@@ -43,5 +47,30 @@ jobs:
 
       # openapi/*.json is merged automatically by the openapi-sync workflow (meta#26)
       # once this passes, so it is the only gate between a backend and this folder.
+      # The openapi-sync App can write branches here and its pull requests
+      # merge themselves, so a pull request it opens (or any bot-authored one,
+      # or any on an openapi-sync/ branch) may change exactly one file: its
+      # own service's spec. Anything else fails, whatever the App's token is
+      # used for. meta has no other bot today; one added later needs its own
+      # exception here.
+      - name: Restrict openapi-sync pull requests to their own spec
+        if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'openapi-sync/') || github.event.pull_request.user.type == 'Bot')
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          case "$HEAD_REF" in
+            openapi-sync/*) ;;
+            *) echo "::error::a bot-authored pull request must come from an openapi-sync/<service> branch"; exit 1 ;;
+          esac
+          expected="openapi/${HEAD_REF#openapi-sync/}.json"
+          changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          if [ "$changed" != "$expected" ]; then
+            echo "::error::an openapi-sync pull request may change only $expected; it changes:"
+            echo "$changed"
+            exit 1
+          fi
+
       - name: Validate the OpenAPI specs
         run: node scripts/validate-openapi.mjs

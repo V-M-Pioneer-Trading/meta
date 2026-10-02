@@ -15,8 +15,19 @@ service serves at runtime in version, not in content.
 | `agent-service.json` | `src/docs/swagger.json` (Swagger 2.0) | `go generate ./...` in `src/` |
 | `navigation-service.json` | `openapi.json` | see navigation-service's README |
 
-automation-service, auth-service and st-gateway publish no spec yet.
+automation-service, auth-service and st-gateway publish no spec yet (#102).
+
+**Adding a service** takes two pull requests: its own (a committed spec, a CI
+check that it is current, and the caller job) and one here adding its name to
+`SERVICES` in `scripts/validate-openapi.mjs`, which refuses unknown files.
+
+**Guards.** `validate` is a required check on main. A pull request from the
+App, or from an `openapi-sync/` branch, may change exactly one file, its own
+`openapi/<service>.json`; the service name is the calling repository's name,
+never an input. The third-party converter runs on a runner that holds no
+token.
 
 The sync authenticates as an org-owned GitHub App installed on this repository
 only, with Contents and Pull requests write; its Client ID and private key are
-the org secrets `OPENAPI_SYNC_CLIENT_ID` and `OPENAPI_SYNC_PRIVATE_KEY`.
+the org secrets `OPENAPI_SYNC_CLIENT_ID` and `OPENAPI_SYNC_PRIVATE_KEY`,
+granted to the three calling repositories only.
