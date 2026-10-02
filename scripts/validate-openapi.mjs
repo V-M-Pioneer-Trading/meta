@@ -20,7 +20,7 @@
  *
  * Zero dependencies and plain node, like validate-fixtures.mjs.
  */
-import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -38,7 +38,8 @@ for (const name of entries) {
 }
 const files = entries.filter((f) => f.endsWith(".json"));
 for (const file of files) {
-  if (!/^[a-z0-9-]+\.json$/.test(file)) fail(file, "name must be <lowercase-repository-name>.json");
+  if (!SERVICES.has(file.slice(0, -".json".length))) fail(file, `not a known service (${[...SERVICES].join(", ")})`);
+  if (statSync(join(dir, file)).size > MAX_BYTES) fail(file, `larger than ${MAX_BYTES} bytes`);
   const raw = readFileSync(join(dir, file), "utf8");
   if (raw.includes("\r")) fail(file, "contains CR; LF line endings only");
   if (!raw.endsWith("\n")) fail(file, "must end with a newline");

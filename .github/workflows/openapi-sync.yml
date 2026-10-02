@@ -25,7 +25,11 @@ name: openapi-sync
 # script, and pushes. A compromised converter dependency therefore never
 # shares a machine with a credential that can write meta.
 #
-# Credential: an org-owned GitHub App installed on meta only, with Contents
+# The converter can only shape the spec's content, which a reviewer of meta
+# sees in the pull request and the validator bounds; it never sees a token.
+#
+# Credential: an org-owned GitHub App named openapi-sync (validate.yml matches
+# its login, openapi-sync[bot]) installed on meta only, with Contents
 # and Pull requests write. Its Client ID and private key are the org secrets
 # OPENAPI_SYNC_CLIENT_ID and OPENAPI_SYNC_PRIVATE_KEY, granted to the calling
 # repositories only. The token it mints lives for an hour, is scoped to meta,
@@ -125,6 +129,7 @@ jobs:
           name: openapi-spec
           path: out/
           retention-days: 1
+          overwrite: true
 
   propose:
     needs: prepare
@@ -174,7 +179,10 @@ jobs:
           SOURCE_REPO: ${{ github.repository }}
         run: |
           branch="openapi-sync/$SERVICE"
-          open=$(gh pr list --repo V-M-Pioneer-Trading/meta --head "$branch" --state open --json number -q '.[0].number')
+          # Same-repository pull requests only: `gh pr list --head` matches a
+          # fork's branch of the same name too, which would let anyone block
+          # this service's syncs by opening one.
+          open=$(gh api "repos/V-M-Pioneer-Trading/meta/pulls?head=V-M-Pioneer-Trading:$branch&state=open" --jq '.[0].number // empty')
           if git diff --quiet -- "openapi/$SERVICE.json" && [ -z "$(git ls-files --others --exclude-standard -- "openapi/$SERVICE.json")" ]; then
             echo "openapi/$SERVICE.json is already current on meta main; nothing to propose."
             # A proposal from an earlier push is now stale: main already has

@@ -67,7 +67,7 @@ jobs:
           esac
           expected="openapi/${HEAD_REF#openapi-sync/}.json"
           changed=$(git diff --no-renames --name-status "$BASE_SHA...$HEAD_SHA")
-          if [ "$changed" != "$(printf 'A\t%s' "$expected")" ] && [ "$changed" != "$(printf 'M\t%s' "$expected")" ]; then
+          if [ "$changed" != "$(printf 'A	%s' "$expected")" ] && [ "$changed" != "$(printf 'M	%s' "$expected")" ]; then
             echo "::error::an openapi-sync pull request may only add or modify $expected; it changes:"
             echo "$changed"
             exit 1
