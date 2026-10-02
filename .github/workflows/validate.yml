@@ -40,3 +40,8 @@ jobs:
       # those is something a conformance suite can catch about itself.
       - name: Validate the conformance fixtures
         run: node scripts/validate-fixtures.mjs
+
+      # openapi/*.json is merged automatically by the openapi-sync workflow (meta#26)
+      # once this passes, so it is the only gate between a backend and this folder.
+      - name: Validate the OpenAPI specs
+        run: node scripts/validate-openapi.mjs

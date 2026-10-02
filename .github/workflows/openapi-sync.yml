@@ -1,0 +1,136 @@
+name: openapi-sync
+
+# Reusable workflow (meta#26). A backend calls it on every push to its main
+# branch, after its own CI has checked that the committed spec is current:
+#
+#   sync-openapi:
+#     needs: test
+#     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+#     uses: V-M-Pioneer-Trading/meta/.github/workflows/openapi-sync.yml@main
+#     with:
+#       service: fleet-service
+#       spec-path: openapi.json
+#     secrets: inherit
+#
+# It copies that spec to meta's openapi/<service>.json and proposes it as one
+# pull request per service, on branch openapi-sync/<service>, with auto-merge
+# on: meta's main accepts changes only through pull requests, and the
+# `validate` check (scripts/validate-openapi.mjs) is what lets it land. A
+# Swagger 2.0 spec (agent-service: swag cannot emit 3.x) is converted to
+# OpenAPI 3.0 first, so meta holds one version throughout.
+#
+# Credential: an org-owned GitHub App installed on meta only, with Contents
+# and Pull requests write. Its Client ID and private key are the org secrets
+# OPENAPI_SYNC_CLIENT_ID and OPENAPI_SYNC_PRIVATE_KEY. The token it mints
+# lives for an hour, is scoped to meta, and acts as the App, not a person.
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        description: Repository name; the file lands at openapi/<service>.json.
+        required: true
+        type: string
+      spec-path:
+        description: Path of the committed spec in the calling repository.
+        required: true
+        type: string
+    secrets:
+      OPENAPI_SYNC_CLIENT_ID:
+        required: true
+      OPENAPI_SYNC_PRIVATE_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+# One sync per service at a time; a newer push supersedes an older one.
+concurrency:
+  group: openapi-sync-${{ inputs.service }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      SERVICE: ${{ inputs.service }}
+      SPEC_PATH: ${{ inputs.spec-path }}
+    steps:
+      # Third-party actions are pinned to a full commit SHA; the comment names
+      # the release (see validate.yml for why).
+      - name: Check out the calling repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      - name: Refuse an unexpected service name
+        run: |
+          case "$SERVICE" in
+            *[!a-z0-9-]*|"") echo "::error::service must be a lowercase repository name, got '$SERVICE'"; exit 1 ;;
+          esac
+
+      - name: Prepare the spec (convert Swagger 2.0 to OpenAPI 3.0)
+        run: |
+          mkdir -p out
+          version=$(node -e 'const s=require(process.argv[1]); process.stdout.write(String(s.openapi ?? ("swagger " + s.swagger)))' "source/$SPEC_PATH")
+          echo "spec version: $version"
+          case "$version" in
+            3.*) node -e 'const fs=require("fs");fs.writeFileSync(process.argv[2], JSON.stringify(JSON.parse(fs.readFileSync(process.argv[1],"utf8")),null,2)+"\n")' "source/$SPEC_PATH" "out/$SERVICE.json" ;;
+            "swagger 2.0")
+              npx --yes swagger2openapi@7.0.8 --patch --outfile out/converted.json "source/$SPEC_PATH"
+              node -e 'const fs=require("fs");fs.writeFileSync(process.argv[2], JSON.stringify(JSON.parse(fs.readFileSync(process.argv[1],"utf8")),null,2)+"\n")' out/converted.json "out/$SERVICE.json" ;;
+            *) echo "::error::$SPEC_PATH is neither OpenAPI 3.x nor Swagger 2.0 ($version)"; exit 1 ;;
+          esac
+
+      - name: Mint a token for meta
+        id: token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.OPENAPI_SYNC_CLIENT_ID }}
+          private-key: ${{ secrets.OPENAPI_SYNC_PRIVATE_KEY }}
+          owner: V-M-Pioneer-Trading
+          repositories: meta
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Check out meta
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: V-M-Pioneer-Trading/meta
+          path: meta
+          token: ${{ steps.token.outputs.token }}
+
+      - name: Validate against meta's rules before proposing
+        run: |
+          cp "out/$SERVICE.json" "meta/openapi/$SERVICE.json"
+          node meta/scripts/validate-openapi.mjs
+
+      - name: Propose the spec to meta
+        working-directory: meta
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          SOURCE_SHA: ${{ github.sha }}
+          SOURCE_REPO: ${{ github.repository }}
+        run: |
+          if git diff --quiet -- "openapi/$SERVICE.json" && ! git ls-files --others --exclude-standard -- "openapi/$SERVICE.json" | grep -q .; then
+            echo "openapi/$SERVICE.json is already current on meta main; nothing to propose."
+            exit 0
+          fi
+          branch="openapi-sync/$SERVICE"
+          git config user.name "openapi-sync[bot]"
+          git config user.email "openapi-sync[bot]@users.noreply.github.com"
+          git switch -C "$branch"
+          git add "openapi/$SERVICE.json"
+          git commit -m "openapi: $SERVICE at ${SOURCE_REPO}@${SOURCE_SHA:0:7}"
+          git push --force origin "$branch"
+          title="openapi: sync $SERVICE"
+          body="Spec from ${SOURCE_REPO}@${SOURCE_SHA}, synced by the openapi-sync workflow (meta#26). Merges itself once \`validate\` passes."
+          if ! gh pr view "$branch" --json state -q .state 2>/dev/null | grep -q OPEN; then
+            gh pr create --base main --head "$branch" --title "$title" --body "$body"
+          fi
+          gh pr merge "$branch" --auto --squash --delete-branch
