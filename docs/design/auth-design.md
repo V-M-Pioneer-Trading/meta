@@ -8,7 +8,11 @@ added 2026-09-20, reverses decision 4 and shipped 2026-09-29 through
 [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80).
 [Decision 22](#22-auth-service-mints-every-machine-token), added
 2026-09-30, moves M2M minting into auth-service and shipped 2026-10-01; see
-[meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59).*
+[meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59).
+[Decision 23](#23-agent-service-and-auth-service-move-from-go-to-typescript),
+added 2026-10-03, moves agent-service and auth-service from Go to TypeScript;
+not shipped, see
+[meta#103](https://github.com/V-M-Pioneer-Trading/meta/issues/103).*
 
 This document covers **two independent applications** that adopt the same vendor
 for different reasons: this project (`spacetraders`) and `mradomsky/stagehopper`.
@@ -1378,6 +1382,10 @@ most. Rollback is redeploying the previous image tag.
   already records that path as unexercisable locally. Mixing it with a
   brand-new hot-path dependency would make a production failure
   unattributable.
+  *Dated 2026-10-03: still deferred. After
+  [decision 23](#23-agent-service-and-auth-service-move-from-go-to-typescript)
+  ports the vault to TypeScript in place, this move would be TS→TS; the Go
+  line counts describe the code that port replaces.*
 - **The [meta#58](https://github.com/V-M-Pioneer-Trading/meta/issues/58)
   follow-up.** Once the host is on bridges and the vault has moved, a proxy
   doing `forward_auth` with identity headers could delete the per-language
@@ -1601,6 +1609,189 @@ is proven live.
    first; ai-service's client wired. Deploying ai-service itself stays
    meta#53.
 
+### 23. agent-service and auth-service move from Go to TypeScript
+
+*Status: **decided 2026-10-03; not shipped.** Both services are Go today,
+exactly as the rest of this document describes them. The rollout is
+[meta#103](https://github.com/V-M-Pioneer-Trading/meta/issues/103); check its
+checkboxes before believing any sentence below describes what runs.*
+
+**agent-service and auth-service are rewritten in TypeScript, in place, one
+after the other, with strict 1:1 behaviour.** Every other backend that is not
+navigation-service — fleet-service, automation-service, st-gateway, ai-service
+— is already TypeScript. This **supersedes the language choice** in
+[New repository: `auth-service`](#new-repository-auth-service), which picked
+Go because a small dependency tree is a security argument for a service that
+holds a credential. That argument is accepted rather than refuted; see
+*Accepted costs*. SQLite stays.
+
+#### Why
+
+- **One language across the backend.** Two Go services among four TS ones
+  means two toolchains, two test stacks, and two places where a fix has to be
+  ported by hand. A TS agent-service uses clerk-client's `guard` and
+  `secured()` like fleet-service does, and its hand-written Go introspection
+  client in `src/introspection` goes away.
+- **Easier to develop and maintain** for the one person who does both, and for
+  the agents that implement most of the code.
+- **A side effect, not the reason: native OpenAPI 3.** tsoa emits OpenAPI 3,
+  so agent-service stops needing the Swagger 2.0 converter in meta's
+  `openapi-sync` workflow, and the swag v2 trial
+  ([agent-service#33](https://github.com/V-M-Pioneer-Trading/agent-service/pull/33))
+  is superseded. auth-service gets a spec for the first time.
+
+#### Accepted costs
+
+- **The npm dependency surface, in the one service where it is a security
+  argument.** It is accepted with mitigations rather than avoided:
+  - auth-service: a committed allowlist of direct dependencies, and a CI check
+    that **fails when `package-lock.json` gains any package that is not in a
+    committed transitive snapshot**. A new transitive dependency is therefore
+    a visible diff in a reviewed pull request, never a silent arrival.
+  - agent-service: the direct-dependency allowlist and `npm audit`.
+  - Both: `npm ci --ignore-scripts`, `npm audit --audit-level=high` in CI,
+    Dependabot, and a distroless runtime image
+    (`gcr.io/distroless/nodejs24-debian12`) with no shell and no package
+    manager, the same posture auth-service's Go image has.
+- **A rewrite of working security code.** Introspection, JWT verification, the
+  vault and M2M minting are ported, not redesigned, and only after
+  agent-service has proven the method. The proof is a contract suite (below),
+  and an Opus implementer and an Opus reviewer on each of those pieces.
+- **Small, named deviations from byte-for-byte parity**, listed under *Parity*.
+  Each was the owner's call on 2026-10-03.
+
+#### Parity
+
+**Strict 1:1**: the same routes, status codes, relevant headers, env vars,
+container names and SSM bootstrap. Any behaviour change is a separate issue
+filed after cutover, never part of a port PR. Schemas do not change, so a
+rollback reads the same database.
+
+What "the same" means: the same status; the same relevant headers (CORS,
+`Cache-Control`, `Content-Type`); JSON **semantically** equal after parse —
+`null` is not a missing key and a number is not a string — while byte
+formatting may differ.
+
+**The proof is black-box.** Each repository gets an HTTP contract suite under
+`contract/` (`node --test`, run against the built image with stubbed
+neighbours) that is green against the Go image first:
+[agent-service#34](https://github.com/V-M-Pioneer-Trading/agent-service/pull/34)
+and [auth-service#12](https://github.com/V-M-Pioneer-Trading/auth-service/pull/12).
+The TS image must pass the same suite **unchanged**. Once merged, `contract`
+becomes a required check.
+
+Accepted deviations (owner, 2026-10-03):
+
+1. **Go's `encoding/json` decoder wording** inside `400` and `502` bodies is
+   not reproduced; the status, content type, envelope and stable prefix are.
+   Go `net/http`'s fixed texts, such as `404 page not found`, **are**
+   reproduced.
+2. **agent-service's Swagger UI** keeps its path, `/api/agent/swagger/`, but
+   not http-swagger's redirect and `HEAD` quirks. gorilla/mux's artefacts —
+   the bare `405` outside the service prefix, `301` path cleaning — **are**
+   reproduced.
+3. **auth-service**: a port may add `Cache-Control: no-store` to the
+   successful `GET /auth/v1/token` answer, and rejects a JWT with an unknown
+   `crit` header, which Go accepts and nothing pins. `GET /auth/v1/token`'s
+   secret is compared in constant time, as introspection and minting already
+   are; the timing is not observable and the status stays `403`.
+
+#### The shape
+
+- **Order: agent-service first; auth-service only after agent-service is cut
+  over and stable.** The service with no credential in it proves the method,
+  the stack and the cutover before the vault is touched.
+- **In place, in the existing repositories.** During the port the TS code
+  lives on `main` in a `ts/` subfolder next to the Go code; CI builds and tests
+  both; the deploy keeps building Go. The cutover PR moves `ts/` to the root,
+  switches the Dockerfile and deletes Go.
+- **Stack**: Node 24; Express and tsoa with the spec committed and a CI drift
+  check, as fleet-service does it; Jest and supertest for unit tests;
+  clerk-client's strict compiler flags (`noUncheckedIndexedAccess`,
+  `exactOptionalPropertyTypes` and the rest of that set).
+  - agent-service: MySQL through `mysql2`, raw SQL, with the inline idempotent
+    DDL ported as it is; authentication through clerk-client's `guard` and
+    `secured()`; `gateway-errors.json` gains a TS consumer; Swagger UI through
+    `swagger-ui-express` from the committed `openapi.json`. Its spec will pass
+    through meta's sync once
+    [meta#26](https://github.com/V-M-Pioneer-Trading/meta/issues/26) wires it,
+    without the converter step, which stays in the workflow.
+  - auth-service: SQLite through the built-in `node:sqlite`, so no native
+    addon. Its stability index in Node 24 is 1.2, *release candidate*, since
+    v24.15.0 (experimental before that, so the image pins at least 24.15);
+    accepted; Clerk JWT verification through `jose`; the server-side
+    introspection fixture test ported as it is. It joins meta's openapi sync
+    (overlapping [meta#102](https://github.com/V-M-Pioneer-Trading/meta/issues/102)).
+- **The vault stays in auth-service and is ported 1:1.** Moving it into
+  st-gateway remains deferred exactly as recorded under decision 21 and in
+  [Deferred, and tracked](#deferred-and-tracked), and remains the only exit
+  from decision 21's isolation downgrade. After this decision that move is
+  TS→TS.
+- **Rollback is an image tag.** The SSM bootstrap documents take an
+  `imageTag` parameter
+  ([infrastructure#102](https://github.com/V-M-Pioneer-Trading/infrastructure/pull/102))
+  that redeploys a previous image by `sha-<40hex>`. Go source is deleted in
+  the cutover PR; the last Go image is what a rollback runs. **A rollback is
+  not sticky**: the next merge to `main` or the next `terraform apply` of the
+  stack redeploys `:latest`. A rollback to Go must therefore be followed by a
+  revert PR on `main` before anything else merges there.
+- **Cutover is probe-gated, for each service.** CI builds no image for a pull
+  request's tip, so the cutover runs like this:
+  1. push a `v*` tag (for example `v2.0.0-rc.1`) on the cutover PR's tip;
+     `container.yml` runs its tests and pushes `sha-<tip>`, and its
+     tip-of-main check stops it from tagging `:latest` or deploying;
+  2. deploy that image with `aws ssm send-command` and `imageTag=sha-<tip>`;
+  3. **merge freeze** on that repository while the probes run, because any
+     merge to `main` redeploys `:latest`;
+  4. run the probe script, which the cutover PR commits under the service
+     repository's `scripts/`, in the manner of decision 22's production
+     probes (recorded on
+     [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59#issuecomment-5919932669));
+  5. probes green, merge: `:latest` is then the same code.
+
+  The same probe list applies to each cutover, agent-service's and
+  auth-service's: command-interface's reads, automation-service's
+  `fleet:control` writes, fleet-service's delivery `POST`, every
+  introspection caller, st-gateway's token fetch, both M2M callers, and one
+  healthy automation cycle. The repositories are public, so probe output
+  records status codes and claim names only, never a token, a bearer or a
+  body from `GET /auth/v1/token` or `POST /auth/v1/m2m-token`.
+- **Who implements**: Sonnet for the well-specified pieces; Opus for
+  auth-service's security code (introspection and JWT, the vault, M2M
+  minting); a fresh Opus reviewer on every PR.
+
+#### Rejected
+
+- **Keeping auth-service in Go** and porting only agent-service, and **a
+  separate vault process**, porting both but splitting the vault into its own
+  tiny process. These were the other two answers to the dependency argument;
+  the owner chose the third, accepting the npm risk with the mitigations above
+  (owner's decision, 2026-10-03). Keeping Go keeps a second language for
+  exactly the service that is hardest to change safely; a separate vault
+  process adds a process, a port and a secret for an interim state, when the
+  vault's real destination is st-gateway, which stays deferred.
+- **An ORM**, for either service. The schemas are small and fixed by the Go
+  code; raw SQL ports the DDL and queries as they are and keeps the rollback
+  guarantee checkable.
+- **`better-sqlite3`.** A native addon is a build toolchain in the image stage
+  and a compiled artefact in the dependency tree; `node:sqlite` is built in.
+- **Plain `node:http`** instead of Express. Fewer dependencies, but a second
+  way of writing a service next to the four that use Express, and no tsoa,
+  clerk-client adapter or spec.
+- **Byte-identical parity.** Reproducing Go's decoder messages and
+  http-swagger's redirects would mean imitating library internals nobody reads.
+  Semantic parity plus the named deviations is what the contract suites pin.
+- **A long-lived port branch.** It would drift from `main` for weeks and land
+  as one unreviewable merge. The `ts/` folder on `main` keeps each piece small,
+  reviewed and continuously tested against the contract suite.
+
+**Not in this decision**, and tracked: Node 24 on the other backends
+([meta#104](https://github.com/V-M-Pioneer-Trading/meta/issues/104)); ESLint
+across the TS repositories
+([meta#105](https://github.com/V-M-Pioneer-Trading/meta/issues/105)); making
+`no-store` on `GET /auth/v1/token` official and any other behaviour cleanup,
+each filed after its service's cutover.
+
 ## New repository: `auth-service`
 
 **Go, SQLite.** Go because this service's job is holding a credential, and a
@@ -1610,6 +1801,15 @@ taste one; agent-service already sets the precedent. SQLite because the state is
 a handful of rows plus a registration history, navigation-service already
 establishes the pattern, and the alternative considered — SSM — is readable by
 every container on the host.
+
+*Dated 2026-10-03: the language choice is superseded by
+[decision 23](#23-agent-service-and-auth-service-move-from-go-to-typescript).
+auth-service is ported to TypeScript 1:1, after agent-service. The dependency
+argument above is accepted as a cost rather than refuted: a committed
+transitive-dependency snapshot checked in CI, `npm ci --ignore-scripts`,
+`npm audit`, Dependabot and a distroless image take its place. SQLite stays,
+for the reasons given, now through the built-in `node:sqlite`. The paragraph
+above is kept as written.*
 
 | Route | Reachable from | Auth | Purpose |
 |---|---|---|---|
@@ -1734,6 +1934,11 @@ no shared code — and can land at any point.
   [decision 21](#21-one-verifier-every-service-asks-auth-service-what-a-token-carries)
   accepts — it deletes `GET /auth/v1/token`, the vault secret, both iptables
   chains and the poll/fetch cycle. If it slips, that downgrade persists.
+  *Dated 2026-10-03: still deferred, and still the only exit.
+  [Decision 23](#23-agent-service-and-auth-service-move-from-go-to-typescript)
+  ports auth-service to TypeScript 1:1, vault included, and does not move it;
+  once that ships, the move is TS→TS rather than Go→TS, and the line counts
+  above are of the Go it replaces.*
 - **Checking `azp`** — declined 2026-09-20, with named reopening conditions:
   **a token that travels in a cookie**, or **a second frontend sharing this
   Clerk instance**. Either makes the CSRF and phishing arguments in decision
