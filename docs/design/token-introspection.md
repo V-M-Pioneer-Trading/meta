@@ -251,14 +251,62 @@ reason.
 ## Conformance
 
 [`fixtures/introspection.json`](../../fixtures/introspection.json) is the
-source of truth: forty-one conditions for a calling service, plus thirteen for
-st-gateway's lane policy — fifty-four in all — each with the center response
+source of truth: fifty-one conditions for a calling service, plus fourteen for
+st-gateway's lane policy — sixty-five in all — each with the center response
 that produces it and the answer expected. It also fixes the names three
 implementations have to agree on — the endpoint, the form field, the
 `X-Introspection-Secret` header, `AUTH_INTROSPECTION_URL` and
 `AUTH_INTROSPECTION_SECRET`, the 1 s timeout and the zero retries.
 
-**The fixture is versioned, and `version` is now `5`.** Version 5
+**The fixture is versioned, and `version` is now `6`.** Version 6
+(2026-10-03, owner's decision, found while porting agent-service to TS under
+[meta#103](https://github.com/V-M-Pioneer-Trading/meta/issues/103)) adds ten
+calling-service cases and one gateway case and changes none. It pins two rules
+every client must apply identically.
+
+- **Scopes are separated by space, tab, CR and LF, and by nothing else.**
+  `scope` is split on runs of those four characters; leading, trailing and
+  repeated separators yield no empty scope. Every other character — VT, FF,
+  U+0085, a no-break space, U+2000–U+200A, an em space, U+2028, U+3000, a BOM,
+  any Unicode space — is *part of* the scope token, so `fleet:control` +
+  U+00A0 + `agent:reset` is one scope that is not `fleet:control`, and the
+  route answers `403`. This is what the Go and Java clients already did.
+  clerk-client split on `/\s+/`, which matches all of those characters, and
+  proceeded; auth-service's own operator routes used `strings.Fields`, which
+  does the same. New cases: `active-with-only-spaces-in-scope`,
+  `scope-joined-by-several-spaces`, `scope-joined-by-tab` (split),
+  `scope-joined-by-no-break-space`, `scope-joined-by-em-space`,
+  `scope-joined-by-vertical-tab`, `scope-joined-by-form-feed` (not split) and
+  `active-with-non-separators-in-scope`, which asserts the opaque token
+  through the identity.
+- **Top-level keys are compared ignoring case.** Two keys equal ignoring case
+  are a duplicate — a malformed answer exactly like version 5's exact repeat —
+  and so is a contract key (`active`, `sub`, `scope`, `exp`, `kind`) spelled
+  any way but its own, even once: `503` from a calling service, `background`
+  from the gateway, one call to the center. A reader comparing keys exactly
+  and one binding them case-insensitively, as Go's `encoding/json` does, would
+  read such a body differently. The Go and Java clients already refused both
+  forms (they lower every top-level key); clerk-client compared keys exactly
+  and proceeded on `{"active":true,…,"Active":false}`. The cases pin **ASCII**
+  case variants only: each client lowers keys with its language's Unicode
+  lowering, and those agree on every ASCII letter but not on every non-ASCII
+  one (Go lowers U+0130 to one character, Java and JavaScript to two). No
+  client folds U+017F (long s) or any other character onto a contract key
+  that its lowering does not. Below the top level version 5's rule stands: an
+  exact repeat within one object is malformed, a case variant is not. New
+  cases: `center-returns-case-variant-duplicate-key`,
+  `center-returns-contract-key-in-another-case` and
+  `gateway-center-returns-case-variant-duplicate-key`.
+
+Re-vendor order: clerk-client (2.0.1) first, then agent-service,
+navigation-service and auth-service, whose operator routes take the same
+scope split and whose center test accounts for the new key-spelling bodies as
+unproducible (the center marshals a struct). st-gateway, fleet-service and
+automation-service take the rules by bumping to clerk-client 2.0.1; st-gateway
+re-vendors the fixture in the same change, since its new gateway case fails on
+2.0.0.
+
+Version 5
 (2026-09-30, [ts-introspection-client#6](https://github.com/V-M-Pioneer-Trading/ts-introspection-client/issues/6))
 adds one calling-service case and one gateway case in which the center's
 answer is JSON that names the **same top-level key twice** — `sub` twice, with
@@ -407,10 +455,14 @@ computes an answer it was given.
   since version 3, once with the key absent — which must be allowed. A
   client that folds this tier into "public" passes the first two only by
   accident; one that folds it into "any scope" fails the last two.
-- **`scope` is split on whitespace runs.** One case carries a double space, a
-  tab and a trailing space, matching what all five verifiers do today
-  (`strings.Fields`, `/\s+/`, `\\s+`). A client splitting on a single space
-  literal cannot find the required scope at all.
+- **`scope` is split on runs of space, tab, CR and LF, and nothing else**
+  (version 6). Cases carry leading, repeated and trailing separators, which
+  yield no empty scope; a client keeping the empties fails its identity
+  assertion, and one splitting on a single space literal cannot find the
+  required scope. Others join two scopes by VT, FF, a no-break space or an em
+  space, which do **not** separate them: the pieces are one opaque scope, and a
+  client that splits on `/\s+/` or `strings.Fields` finds a scope the token
+  does not carry.
 - **`scope` is always present on an active answer** (dated 2026-09-23). The
   center sends `"scope":""` when the token carries no scopes (no claim, an empty
   string or an empty array) and never leaves the key out. RFC 7662 would allow
