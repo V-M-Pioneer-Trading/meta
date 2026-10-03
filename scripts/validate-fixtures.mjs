@@ -19,7 +19,8 @@
  *      the status that message is defined to carry;
  *   4. `expect.centerCalls === 0` if and only if `center.notCalled` is true;
  *   5. `expect.identity.scopes` is the center body's `scope`, split the way
- *      every verifier splits it — on whitespace RUNS, empties discarded;
+ *      every client splits it — on RUNS of space, tab, CR and LF, empties
+ *      discarded (version 6: no other character separates scopes);
  *   6. `route`, `request`, `center` and `expect` carry known keys only;
  *   7. every case has a non-empty `why`;
  *   8. `request.authorization` is null, one header line (a string), or two or
@@ -95,8 +96,13 @@ const KNOWN_CASE_KEYS = new Set([
   "expect",
 ]);
 
-/** The whitespace-RUN split, matching strings.Fields, /\s+/ and \s+. */
-const splitScopes = (scope) => scope.split(/\s+/).filter((s) => s.length > 0);
+/**
+ * Runs of SPACE, TAB, CR and LF separate scopes and nothing else does
+ * (fixture version 6): VT, FF, a no-break space or any other Unicode space is
+ * part of the scope token. Not `/\s+/`, which matches all of those. Empties
+ * from leading, trailing or repeated separators are discarded.
+ */
+const splitScopes = (scope) => scope.split(/[ \t\r\n]+/).filter((s) => s.length > 0);
 
 const isObject = (value) =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -299,7 +305,7 @@ const checkCase = (problems, group, testCase, messageValues) => {
           where,
           `expect.identity.scopes is ${JSON.stringify(got)} but the center's scope ${JSON.stringify(
             scope
-          )} splits on whitespace runs to ${JSON.stringify(wanted)}`
+          )} splits on runs of space, tab, CR and LF to ${JSON.stringify(wanted)}`
         );
       }
     }
