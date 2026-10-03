@@ -271,9 +271,10 @@ every client must apply identically.
   any Unicode space — is *part of* the scope token, so `fleet:control` +
   U+00A0 + `agent:reset` is one scope that is not `fleet:control`, and the
   route answers `403`. This is what the Go and Java clients already did.
-  clerk-client split on `/\s+/`, which matches all of those characters, and
-  proceeded; auth-service's own operator routes used `strings.Fields`, which
-  does the same. New cases: `active-with-only-spaces-in-scope`,
+  clerk-client split on `/\s+/`, which matches nearly all of those characters
+  (not U+0085), and proceeded; auth-service's own operator routes used
+  `strings.Fields`, which matches nearly all of them too (not U+FEFF). New
+  cases: `active-with-only-spaces-in-scope`,
   `scope-joined-by-several-spaces`, `scope-joined-by-tab` (split),
   `scope-joined-by-no-break-space`, `scope-joined-by-em-space`,
   `scope-joined-by-vertical-tab`, `scope-joined-by-form-feed` (not split) and
