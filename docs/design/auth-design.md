@@ -1712,11 +1712,14 @@ Accepted deviations (owner, 2026-10-03):
   - agent-service: MySQL through `mysql2`, raw SQL, with the inline idempotent
     DDL ported as it is; authentication through clerk-client's `guard` and
     `secured()`; `gateway-errors.json` gains a TS consumer; Swagger UI through
-    `swagger-ui-express` from the committed `openapi.json`. Its spec still
-    passes through meta's sync, now without needing the converter step, which
-    stays in the workflow.
+    `swagger-ui-express` from the committed `openapi.json`. Its spec will pass
+    through meta's sync once
+    [meta#26](https://github.com/V-M-Pioneer-Trading/meta/issues/26) wires it,
+    without the converter step, which stays in the workflow.
   - auth-service: SQLite through the built-in `node:sqlite`, so no native
-    addon; Clerk JWT verification through `jose`; the server-side
+    addon. Its stability index in Node 24 is 1.2, *release candidate*, since
+    v24.15.0 (experimental before that, so the image pins at least 24.15);
+    accepted; Clerk JWT verification through `jose`; the server-side
     introspection fixture test ported as it is. It joins meta's openapi sync
     (overlapping [meta#102](https://github.com/V-M-Pioneer-Trading/meta/issues/102)).
 - **The vault stays in auth-service and is ported 1:1.** Moving it into
@@ -1728,25 +1731,45 @@ Accepted deviations (owner, 2026-10-03):
   `imageTag` parameter
   ([infrastructure#102](https://github.com/V-M-Pioneer-Trading/infrastructure/pull/102))
   that redeploys a previous image by `sha-<40hex>`. Go source is deleted in
-  the cutover PR; the last Go image is what a rollback runs. **The cutover PR
-  merges only after a probe script, in the manner of decision 22's, is green
-  against the TS image deployed by sha**: command-interface's reads,
-  automation-service's `fleet:control` writes, fleet-service's delivery
-  `POST`, every introspection caller, st-gateway's token fetch, both M2M
-  callers, and one healthy automation cycle.
+  the cutover PR; the last Go image is what a rollback runs. **A rollback is
+  not sticky**: the next merge to `main` or the next `terraform apply` of the
+  stack redeploys `:latest`. A rollback to Go must therefore be followed by a
+  revert PR on `main` before anything else merges there.
+- **Cutover is probe-gated, for each service.** CI builds no image for a pull
+  request's tip, so the cutover runs like this:
+  1. push a `v*` tag (for example `v2.0.0-rc.1`) on the cutover PR's tip;
+     `container.yml` runs its tests and pushes `sha-<tip>`, and its
+     tip-of-main check stops it from tagging `:latest` or deploying;
+  2. deploy that image with `aws ssm send-command` and `imageTag=sha-<tip>`;
+  3. **merge freeze** on that repository while the probes run, because any
+     merge to `main` redeploys `:latest`;
+  4. run the probe script, which the cutover PR commits under the service
+     repository's `scripts/`, in the manner of decision 22's production
+     probes (recorded on
+     [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59#issuecomment-5919932669));
+  5. probes green, merge: `:latest` is then the same code.
+
+  The same probe list applies to each cutover, agent-service's and
+  auth-service's: command-interface's reads, automation-service's
+  `fleet:control` writes, fleet-service's delivery `POST`, every
+  introspection caller, st-gateway's token fetch, both M2M callers, and one
+  healthy automation cycle. The repositories are public, so probe output
+  records status codes and claim names only, never a token, a bearer or a
+  body from `GET /auth/v1/token` or `POST /auth/v1/m2m-token`.
 - **Who implements**: Sonnet for the well-specified pieces; Opus for
   auth-service's security code (introspection and JWT, the vault, M2M
   minting); a fresh Opus reviewer on every PR.
 
 #### Rejected
 
-- **Keeping auth-service in Go** and porting only agent-service. It would keep
-  the dependency argument intact, and it would also keep a second language for
-  exactly the service that is hardest to change safely. The argument is
-  answered with the mitigations above instead.
-- **A separate vault process**, splitting the token store out of the TS
-  auth-service to keep it small. A new process, port and secret for an interim
-  state; the vault's real destination is st-gateway, which stays deferred.
+- **Keeping auth-service in Go** and porting only agent-service, and **a
+  separate vault process**, porting both but splitting the vault into its own
+  tiny process. These were the other two answers to the dependency argument;
+  the owner chose the third, accepting the npm risk with the mitigations above
+  (owner's decision, 2026-10-03). Keeping Go keeps a second language for
+  exactly the service that is hardest to change safely; a separate vault
+  process adds a process, a port and a secret for an interim state, when the
+  vault's real destination is st-gateway, which stays deferred.
 - **An ORM**, for either service. The schemas are small and fixed by the Go
   code; raw SQL ports the DDL and queries as they are and keeps the rollback
   guarantee checkable.
