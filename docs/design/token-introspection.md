@@ -251,14 +251,45 @@ reason.
 ## Conformance
 
 [`fixtures/introspection.json`](../../fixtures/introspection.json) is the
-source of truth: fifty-one conditions for a calling service, plus fourteen for
-st-gateway's lane policy — sixty-five in all — each with the center response
+source of truth: fifty-six conditions for a calling service, plus nineteen for
+st-gateway's lane policy — seventy-five in all — each with the center response
 that produces it and the answer expected. It also fixes the names three
 implementations have to agree on — the endpoint, the form field, the
 `X-Introspection-Secret` header, `AUTH_INTROSPECTION_URL` and
 `AUTH_INTROSPECTION_SECRET`, the 1 s timeout and the zero retries.
 
-**The fixture is versioned, and `version` is now `6`.** Version 6
+**The fixture is versioned, and `version` is now `7`.** Version 7
+(2026-10-05, owner's decision Q30,
+[clerk-client#13](https://github.com/V-M-Pioneer-Trading/clerk-client/issues/13))
+adds five calling-service cases and five gateway cases and changes none. It
+pins one rule: **a non-2xx answer is unavailable whatever its body says.** The
+center answers `500`, `401`, `302`, `503` or `404` with a body that is a
+valid active answer for an operator holding the required scope. A calling
+service answers `503 the authentication service could not process this
+request`, st-gateway lanes `background`, and the center is called once. The
+status is decided before the body is read; the body of a non-2xx is never
+parsed for an identity. Every non-2xx case before version 7 carried an error
+body that no reader takes for an answer, so a client that parsed first and
+looked at the status only when the parse failed passed the whole file.
+clerk-client (`if (!response.ok)` ahead of the body read) and
+navigation-service (`IntrospectionClient` checks the status, and its body
+subscriber does not even read a non-2xx body) already behaved this way; the
+cases pin it. A `3xx` is never followed, since following it would carry the
+caller secret to the `Location`'s host. The stub sends no `Location`, so
+not following a redirect stays each client's own obligation to test. The
+center never sends an active body with a non-2xx, so these cases are a
+client's obligation only, and auth-service's center test classifies them as
+client-only. `scripts/validate-fixtures.mjs` now refuses a case that stubs a
+non-2xx and expects anything but `centerUnavailable` or `background`. New
+cases: `center-returns-{500,401,302,503,404}-with-active-body` and
+`gateway-center-returns-{500,401,302,503,404}-with-active-body`.
+
+Re-vendor order: clerk-client first (tests only, no release), then
+navigation-service, auth-service and st-gateway, in any order. agent-service,
+fleet-service and automation-service vendor no copy; they take the fixture
+through clerk-client's suite. ai-service is parked and not re-vendored.
+
+Version 6
 (2026-10-03, owner's decision, found while porting agent-service to TS under
 [meta#103](https://github.com/V-M-Pioneer-Trading/meta/issues/103)) adds ten
 calling-service cases and one gateway case and changes none. It pins two rules

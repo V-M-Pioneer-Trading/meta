@@ -26,7 +26,10 @@
  *   8. `request.authorization` is null, one header line (a string), or two or
  *      more lines (an array of strings, version 4) — and a case sending more
  *      than one line expects the center not to be called, because more than
- *      one `Authorization` line is never a credential.
+ *      one `Authorization` line is never a credential;
+ *   9. a center stubbed with a non-2xx status expects the center-unavailable
+ *      answer — `centerUnavailable` from a calling service, `background`
+ *      from the gateway — whatever the body says (version 7).
  *
  * Zero dependencies and plain node, so it runs in CI with no install step and
  * on a checkout with no node_modules. Exit 0 says nothing is wrong; exit 1
@@ -316,6 +319,26 @@ const checkCase = (problems, group, testCase, messageValues) => {
         expected.outcome
       )}`
     );
+  }
+
+  // 9. A non-2xx is unavailable whatever its body says (version 7). A case
+  //    stubbing one and expecting anything else — a proceed taken from an
+  //    active body, a relayed 401, an interactive lane — contradicts the rule.
+  if (
+    typeof center.status === "number" &&
+    (center.status < 200 || center.status > 299)
+  ) {
+    const unavailable =
+      expected.outcome === "lane"
+        ? expected.lane === "background"
+        : expected.outcome === "reject" &&
+          messageValues.get(expected.message) === "centerUnavailable";
+    if (!unavailable) {
+      problems.add(
+        where,
+        `center.status is ${center.status}, a non-2xx, so the answer must be centerUnavailable (calling service) or the background lane (gateway), whatever the body says`
+      );
+    }
   }
 
   if (expected.outcome === "lane" && expected.status !== undefined) {
