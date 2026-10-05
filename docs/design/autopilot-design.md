@@ -54,6 +54,8 @@ ST allows ~2 req/s per account, globally. Today three services call ST independe
 
 For now the user pastes the token into the UI to arm autopilot; automation-service holds it **in memory only** — no persisted secret. Known trade-off: a service restart disarms autopilot and requires re-arming. Eventually a dedicated **auth-service** will own credentials properly. Existing services stay pass-through (Bearer forwarded per request), unchanged.
 
+*Superseded by [auth-design.md](auth-design.md) (no game token lives in automation-service any more), and the restart trade-off by [decision 13](#13-restart-restores-the-lifecycle-in-shadow-never-live) below: a restart no longer disarms.*
+
 ### 5. V1 loops: mining, contracts, market intel
 
 - **Mining loop** — travel → survey → extract → refuel → sell at best nearby market. POC-proven, first to automate end-to-end. *(Shipped with the refuel after the sell rather than before it: a full hold can take several goods to several markets, so the tank is topped up once the hold is empty and the ship is about to be handed back to the planner.)*
@@ -116,6 +118,26 @@ command-interface gets: on/off/pause toggle (with token paste-to-arm flow), per-
 ### 12. Stack: new services in TypeScript
 
 automation-service, ai-service, and st-gateway in TS/Node. Reuses ST types and client code from fleet-service and the MCP server; gateway is a tiny IO-bound proxy where Node fits; one toolchain across the new services.
+
+### 13. Restart restores the lifecycle, in shadow, never live
+
+*Owner decision Q29 = C, 2026-10-05 (automation-service#46). Replaces decision 4's "a service restart disarms autopilot".*
+
+Decision 4's disarm-on-restart came from holding the pasted token in memory. With the token gone it was only a cost: every deploy disarmed the fleet until someone noticed.
+
+automation-service now persists the autopilot's status and mode on every arm, pause and abort. On restart:
+
+- **Armed or paused comes back armed or paused, always in shadow.** Shadow keeps planning and logging and dispatches nothing. Live never resumes without the owner. A deploy is not the owner saying "keep trading".
+- **If the stored mode was not shadow** (live, or anything unreadable), the restart raises one `autopilot_resumed_in_shadow` alert through the anomaly table and webhook: *"autopilot resumed in shadow after restart; was live; re-arm live to continue trading"*. The alert also names who last wrote the state and when. The downgrade is written back, so a crash loop alerts once.
+- **Shadow, aborted and never-armed come back as they were, with no alert.** Nothing was lost, so there is nothing to ask the owner.
+- **A status the code does not recognise comes back disarmed.**
+- The restart logs the lifecycle event with actor `system:restart`.
+
+This is decision 8 of auth-design.md applied to restarts: never act irreversibly without a human. Resuming planning is free and reversible. Resuming trades is not.
+
+Rejected:
+- **(A) Keep disarming.** It is the status quo, and it costs a re-arm after every deploy.
+- **(B) Resume exactly as persisted, live included.** It trades through a deploy nobody confirmed.
 
 ## New repositories
 
