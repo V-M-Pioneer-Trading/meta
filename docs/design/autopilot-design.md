@@ -54,7 +54,7 @@ ST allows ~2 req/s per account, globally. Today three services call ST independe
 
 For now the user pastes the token into the UI to arm autopilot; automation-service holds it **in memory only** — no persisted secret. Known trade-off: a service restart disarms autopilot and requires re-arming. Eventually a dedicated **auth-service** will own credentials properly. Existing services stay pass-through (Bearer forwarded per request), unchanged.
 
-*Superseded by [auth-design.md](auth-design.md) (no game token lives in automation-service any more), and the restart trade-off by [decision 13](#13-restart-restores-the-lifecycle-in-shadow-never-live) below: a restart no longer disarms.*
+*Note, 2026-10-05: superseded by [decision 13](#13-restart-restores-the-lifecycle-in-shadow-never-live) (the restart trade-off: a restart no longer disarms), and earlier by [auth-design.md](auth-design.md) (no game token lives in automation-service any more).*
 
 ### 5. V1 loops: mining, contracts, market intel
 
@@ -127,13 +127,13 @@ Decision 4's disarm-on-restart came from holding the pasted token in memory. Wit
 
 automation-service now persists the autopilot's status and mode on every arm, pause and abort. On restart:
 
-- **Armed or paused comes back armed or paused, always in shadow.** Shadow keeps planning and logging and dispatches nothing. Live never resumes without the owner. A deploy is not the owner saying "keep trading".
+- **Armed or paused comes back armed or paused, always in shadow.** Armed shadow keeps planning and logging and dispatches nothing; paused shadow does neither. Live never resumes without the owner. A deploy is not the owner saying "keep trading".
 - **If the stored mode was not shadow** (live, or anything unreadable), the restart raises one `autopilot_resumed_in_shadow` alert through the anomaly table and webhook: *"autopilot resumed in shadow after restart; was live; re-arm live to continue trading"*. The alert also names who last wrote the state and when. The downgrade is written back, so a crash loop alerts once.
 - **Shadow, aborted and never-armed come back as they were, with no alert.** Nothing was lost, so there is nothing to ask the owner.
 - **A status the code does not recognise comes back disarmed.**
 - The restart logs the lifecycle event with actor `system:restart`.
 
-This is decision 8 of auth-design.md applied to restarts: never act irreversibly without a human. Resuming planning is free and reversible. Resuming trades is not.
+This is [decision 8 of auth-design.md](auth-design.md#8-auto-disarm-is-not-auto-register) applied to restarts: never act irreversibly without a human. Resuming planning is free and reversible. Resuming trades is not.
 
 Rejected:
 - **(A) Keep disarming.** It is the status quo, and it costs a re-arm after every deploy.
