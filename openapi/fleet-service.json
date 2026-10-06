@@ -1,0 +1,728 @@
+{
+  "openapi": "3.0.0",
+  "components": {
+    "examples": {},
+    "headers": {},
+    "parameters": {},
+    "requestBodies": {},
+    "responses": {},
+    "schemas": {
+      "Record_string.unknown_": {
+        "properties": {},
+        "additionalProperties": {},
+        "type": "object",
+        "description": "Construct a type with a set of properties K of type T"
+      },
+      "ShipActionResponse": {
+        "$ref": "#/components/schemas/Record_string.unknown_",
+        "description": "Every route here answers with SpaceTraders' response body, unmodified."
+      },
+      "NavigateRequestBody": {
+        "properties": {
+          "waypointSymbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "waypointSymbol"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "SurveyDeposit": {
+        "properties": {
+          "symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Survey": {
+        "properties": {
+          "signature": {
+            "type": "string"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "deposits": {
+            "items": {
+              "$ref": "#/components/schemas/SurveyDeposit"
+            },
+            "type": "array"
+          },
+          "expiration": {
+            "type": "string"
+          },
+          "size": {
+            "type": "string",
+            "enum": [
+              "SMALL",
+              "MODERATE",
+              "LARGE"
+            ]
+          }
+        },
+        "required": [
+          "signature",
+          "symbol",
+          "deposits",
+          "expiration",
+          "size"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "ExtractRequestBody": {
+        "properties": {
+          "survey": {
+            "$ref": "#/components/schemas/Survey"
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "RefuelRequestBody": {
+        "properties": {
+          "units": {
+            "type": "number",
+            "format": "double"
+          },
+          "fromCargo": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "PatchNavRequestBody": {
+        "properties": {
+          "flightMode": {
+            "type": "string",
+            "enum": [
+              "DRIFT",
+              "STEALTH",
+              "CRUISE",
+              "BURN"
+            ]
+          }
+        },
+        "required": [
+          "flightMode"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "TransferCargoRequestBody": {
+        "properties": {
+          "tradeSymbol": {
+            "type": "string"
+          },
+          "units": {
+            "type": "number",
+            "format": "double"
+          },
+          "shipSymbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tradeSymbol",
+          "units",
+          "shipSymbol"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "DeliverContractRequestBody": {
+        "properties": {
+          "shipSymbol": {
+            "type": "string"
+          },
+          "tradeSymbol": {
+            "type": "string"
+          },
+          "units": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": [
+          "shipSymbol",
+          "tradeSymbol",
+          "units"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {}
+  },
+  "info": {
+    "title": "Fleet Service API",
+    "version": "1.0.0",
+    "description": "Ship action commands for the SpaceTraders mining POC",
+    "contact": {}
+  },
+  "paths": {
+    "/ships/{shipSymbol}/orbit": {
+      "post": {
+        "operationId": "Orbit",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipActionResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Move a ship from docked to orbit at its current waypoint.",
+        "tags": [
+          "ships"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shipSymbol",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/ships/{shipSymbol}/dock": {
+      "post": {
+        "operationId": "Dock",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipActionResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Dock a ship at its current waypoint.",
+        "tags": [
+          "ships"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shipSymbol",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/ships/{shipSymbol}/navigate": {
+      "post": {
+        "operationId": "Navigate",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipActionResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Navigate a ship (must be in orbit) to a waypoint in the same system.",
+        "tags": [
+          "ships"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shipSymbol",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NavigateRequestBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ships/{shipSymbol}/extract": {
+      "post": {
+        "operationId": "Extract",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipActionResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Extract resources at the ship's current waypoint. Optionally targets a prior survey.",
+        "tags": [
+          "ships"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shipSymbol",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtractRequestBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ships/{shipSymbol}/extract/survey": {
+      "post": {
+        "operationId": "ExtractWithSurvey",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipActionResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Extract resources using a previously created survey.",
+        "tags": [
+          "ships"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shipSymbol",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Survey"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ships/{shipSymbol}/survey": {
+      "post": {
+        "operationId": "Survey",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipActionResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Create a resource survey at the ship's current waypoint.",
+        "tags": [
+          "ships"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shipSymbol",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/ships/{shipSymbol}/refuel": {
+      "post": {
+        "operationId": "Refuel",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipActionResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Refuel a docked ship at a waypoint with a market that sells fuel.",
+        "tags": [
+          "ships"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shipSymbol",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefuelRequestBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ships/{shipSymbol}/cooldown": {
+      "get": {
+        "operationId": "Cooldown",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipActionResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Get the ship's current cooldown (e.g. after extract/survey).",
+        "tags": [
+          "ships"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shipSymbol",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/ships/{shipSymbol}/cargo": {
+      "get": {
+        "operationId": "Cargo",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipActionResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Get the ship's current cargo hold contents.",
+        "tags": [
+          "ships"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shipSymbol",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/ships/{shipSymbol}/nav": {
+      "patch": {
+        "operationId": "PatchNav",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipActionResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Set the ship's flight mode (CRUISE, BURN, DRIFT, STEALTH), used on subsequent navigation.",
+        "tags": [
+          "ships"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shipSymbol",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchNavRequestBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ships/{shipSymbol}/transfer": {
+      "post": {
+        "operationId": "TransferCargo",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipActionResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Transfer cargo from this ship to another ship at the same waypoint.",
+        "tags": [
+          "ships"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shipSymbol",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferCargoRequestBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contracts/{contractId}/deliver": {
+      "post": {
+        "operationId": "Deliver",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Record_string.unknown_"
+                }
+              }
+            }
+          }
+        },
+        "description": "Deliver cargo against a contract. Calls SpaceTraders' deliver-contract, then records the\ndelivery in agent-service's contract history. If that recording call fails, the\nSpaceTraders delivery (already completed) is still returned to the caller — there's\nnothing to roll back, and losing delivery history shouldn't hide a successful gameplay\naction.",
+        "tags": [
+          "contracts"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contractId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliverContractRequestBody"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ]
+}
