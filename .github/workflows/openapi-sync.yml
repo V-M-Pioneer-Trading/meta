@@ -5,18 +5,24 @@ name: openapi-sync
 #
 #   sync-openapi:
 #     needs: test
-#     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+#     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
 #     uses: V-M-Pioneer-Trading/meta/.github/workflows/openapi-sync.yml@main
 #     with:
 #       spec-path: openapi.json
-#     secrets: inherit
+#     secrets:
+#       OPENAPI_SYNC_CLIENT_ID: ${{ secrets.OPENAPI_SYNC_CLIENT_ID }}
+#       OPENAPI_SYNC_PRIVATE_KEY: ${{ secrets.OPENAPI_SYNC_PRIVATE_KEY }}
+#
+# Only the run for the tip of the caller's main proposes anything: a re-run of
+# an older commit, or a run that finished out of order, would otherwise put an
+# older spec back on meta.
 #
 # It copies that spec to meta's openapi/<repository>.json and proposes it as
 # one pull request per service, on branch openapi-sync/<repository>, with
 # auto-merge on: meta's main accepts changes only through pull requests, and
 # the required `validate` check is what lets one land. `validate` also refuses
 # any pull request from this workflow's App that touches anything but its own
-# openapi/<repository>.json. A Swagger 2.0 spec (agent-service's before #103: swag cannot
+# openapi/<repository>.json. A Swagger 2.0 spec (agent-service before #103: swag cannot
 # emit 3.x) is converted to OpenAPI 3.0 first, so meta holds one version.
 #
 # Two jobs on two runners, on purpose. `prepare` reads the caller's file and
@@ -60,6 +66,9 @@ concurrency:
 jobs:
   prepare:
     runs-on: ubuntu-latest
+    # A job that calls a reusable workflow cannot set a timeout, and the caller
+    # runs this inside its deploy concurrency group: a hang would hold that.
+    timeout-minutes: 10
     outputs:
       service: ${{ steps.name.outputs.service }}
     steps:
@@ -135,6 +144,7 @@ jobs:
   propose:
     needs: prepare
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       SERVICE: ${{ needs.prepare.outputs.service }}
     steps:
@@ -179,6 +189,17 @@ jobs:
           SOURCE_SHA: ${{ github.sha }}
           SOURCE_REPO: ${{ github.repository }}
         run: |
+          # Checked last, right before writing: only the tip of the caller's
+          # main may propose. --exit-code and no pipe: a failed lookup fails
+          # the run instead of reading as "not the tip".
+          refs=$(git ls-remote --exit-code "https://github.com/$SOURCE_REPO.git" refs/heads/main)
+          tip=$(printf '%s
+' "$refs" | awk '$2 == "refs/heads/main" { print $1 }')
+          [ -n "$tip" ] || { echo "::error::refs/heads/main not found on $SOURCE_REPO"; exit 1; }
+          if [ "$tip" != "$SOURCE_SHA" ]; then
+            echo "::warning::Not syncing $SOURCE_SHA: $SOURCE_REPO main is at $tip, whose own run syncs it."
+            exit 0
+          fi
           branch="openapi-sync/$SERVICE"
           # Same-repository pull requests only: `gh pr list --head` matches a
           # fork's branch of the same name too, which would let anyone block
