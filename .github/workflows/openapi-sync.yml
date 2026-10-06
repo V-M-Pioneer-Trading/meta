@@ -193,8 +193,7 @@ jobs:
           # main may propose. --exit-code and no pipe: a failed lookup fails
           # the run instead of reading as "not the tip".
           refs=$(git ls-remote --exit-code "https://github.com/$SOURCE_REPO.git" refs/heads/main)
-          tip=$(printf '%s
-' "$refs" | awk '$2 == "refs/heads/main" { print $1 }')
+          tip=$(awk '$2 == "refs/heads/main" { print $1 }' <<<"$refs")
           [ -n "$tip" ] || { echo "::error::refs/heads/main not found on $SOURCE_REPO"; exit 1; }
           if [ "$tip" != "$SOURCE_SHA" ]; then
             echo "::warning::Not syncing $SOURCE_SHA: $SOURCE_REPO main is at $tip, whose own run syncs it."
