@@ -5,17 +5,20 @@ by hand: each backend commits its own spec, checks it is current in CI, and on
 every push to its main branch calls
 [`.github/workflows/openapi-sync.yml`](../.github/workflows/openapi-sync.yml),
 which proposes the file here as a pull request (`openapi-sync/<repository>`)
-that merges itself once `validate` passes. Swagger 2.0 specs (agent-service) are
-converted to OpenAPI 3.0 on the way in, so a file here can differ from what the
-service serves at runtime in version, not in content.
+that merges itself once `validate` passes. A Swagger 2.0 spec would be converted
+to OpenAPI 3.0 on the way in; since agent-service moved to TypeScript (#103)
+every service publishes OpenAPI 3.x already.
 
 | File | Source in the backend | Regenerate there with |
 |---|---|---|
 | `fleet-service.json` | `openapi.json` | `npm run openapi` |
-| `agent-service.json` | `src/docs/swagger.json` (Swagger 2.0) | `go generate ./...` in `src/` |
+| `agent-service.json` | `openapi.json` | `npm run openapi` |
 | `navigation-service.json` | `openapi.json` | see navigation-service's README |
+| `auth-service.json` | `openapi.json` | `npm run openapi` |
 
-automation-service, auth-service and st-gateway publish no spec yet (#102).
+automation-service and st-gateway publish no spec yet (#102). auth-service's
+spec covers its public and internal routes; the repository is public, so
+publishing it here reveals nothing new.
 
 **Adding a service** takes two pull requests: its own (a committed spec, a CI
 check that it is current, and the caller job) and one here adding its name to
