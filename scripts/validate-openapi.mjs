@@ -24,7 +24,7 @@ import { readdirSync, readFileSync, existsSync, lstatSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const SERVICES = new Set(["fleet-service", "agent-service", "navigation-service"]);
+const SERVICES = new Set(["fleet-service", "agent-service", "navigation-service", "auth-service"]);
 const MAX_BYTES = 2_000_000;
 const OPERATIONS = ["get", "put", "post", "delete", "options", "head", "patch", "trace"];
 

@@ -16,7 +16,7 @@ name: openapi-sync
 # auto-merge on: meta's main accepts changes only through pull requests, and
 # the required `validate` check is what lets one land. `validate` also refuses
 # any pull request from this workflow's App that touches anything but its own
-# openapi/<repository>.json. A Swagger 2.0 spec (agent-service: swag cannot
+# openapi/<repository>.json. A Swagger 2.0 spec (agent-service's before #103: swag cannot
 # emit 3.x) is converted to OpenAPI 3.0 first, so meta holds one version.
 #
 # Two jobs on two runners, on purpose. `prepare` reads the caller's file and
