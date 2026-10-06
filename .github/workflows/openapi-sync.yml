@@ -28,9 +28,10 @@ name: openapi-sync
 # The converter can only shape the spec's content, which a reviewer of meta
 # sees in the pull request and the validator bounds; it never sees a token.
 #
-# Credential: an org-owned GitHub App named vmpt-openapi-sync (validate.yml matches
-# its login, vmpt-openapi-sync[bot]; the name openapi-sync was taken) installed on meta only, with Contents
-# and Pull requests write. Its Client ID and private key are the org secrets
+# Credential: an org-owned GitHub App named vmpt-openapi-sync (the name
+# openapi-sync was taken; validate.yml matches its login,
+# vmpt-openapi-sync[bot]) installed on meta only, with Contents and Pull
+# requests write. Its Client ID and private key are the org secrets
 # OPENAPI_SYNC_CLIENT_ID and OPENAPI_SYNC_PRIVATE_KEY, granted to the calling
 # repositories only. The token it mints lives for an hour, is scoped to meta,
 # and acts as the App, not a person.
