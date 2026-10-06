@@ -22,7 +22,7 @@ check that it is current, and the caller job) and one here adding its name to
 `SERVICES` in `scripts/validate-openapi.mjs`, which refuses unknown files.
 
 **Guards.** `validate` is a required check on main. A pull request from the
-App (named `openapi-sync`), or from an `openapi-sync/` branch, may only add or
+App (`vmpt-openapi-sync`), or from an `openapi-sync/` branch, may only add or
 modify one file, its own `openapi/<service>.json`; the service name is the calling repository's name,
 never an input. The third-party converter runs on a runner that holds no
 token.

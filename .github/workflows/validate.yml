@@ -55,7 +55,7 @@ jobs:
       # Matched by the App's own login, not "any bot": other Apps installed on
       # the org (claude) open ordinary pull requests here.
       - name: Restrict openapi-sync pull requests to their own spec
-        if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'openapi-sync/') || github.event.pull_request.user.login == 'openapi-sync[bot]')
+        if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'openapi-sync/') || github.event.pull_request.user.login == 'vmpt-openapi-sync[bot]')
         env:
           HEAD_REF: ${{ github.head_ref }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
