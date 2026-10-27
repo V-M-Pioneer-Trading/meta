@@ -47,7 +47,7 @@ decisions; this file only fixes vocabulary.
   `WIPE_IMMINENT`).
 - **M2M token** — a short-lived token the center mints for a machine, which
   presents its **caller secret** to get one. Carries the machine's fixed scopes
-  ([decision 22](docs/design/auth-design.md)). _Avoid_: machine token.
+  ([decision 22](docs/design/auth-design.md)). _Avoid_: machine token (design-doc headings written before this choice keep it; leave them).
 
 *The next three names are fixed by
 [decision 21](docs/design/auth-design.md#21-one-verifier-every-service-asks-auth-service-what-a-token-carries),

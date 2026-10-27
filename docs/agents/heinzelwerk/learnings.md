@@ -21,5 +21,5 @@ Curated by tech-lead at the end of each team run, merged by a human. Max 80 line
 - **discovery** (adopted: token-introspection.md): Node keeps only the first `Authorization` header; count lines from `rawHeaders`. CloudFront collapses duplicates, so test that from the host.
 - **codebase** (adopted: automation-service/README.md): replay re-scores only the choice between asteroid fields; zero flips says nothing about contract or scout decisions.
 - **codebase** (adopted: agent-service/contract/README.md #33): `shipSymbol` and contract id compare case- and accent-insensitively under MySQL collation; leave filtering to SQL.
-- **codebase** (adopted: clerk-client README, CHANGELOG): the README describes main (fixture v7); the 2.0.1 release consumers pin conforms to v6.
+- **codebase** (adopted: clerk-client README, CHANGELOG): the README describes main (fixture v7); the 2.0.1 release that agent, automation, fleet and st-gateway pin conforms to v6. ai-service pins the older introspection-client 1.2.0.
 - **warning** (adopted: auth-design.md, Increment 1): Clerk restricted mode ignores the allowlist; a zero-user instance needs sign-up opened briefly to bootstrap.

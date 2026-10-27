@@ -1,6 +1,6 @@
 # Repo map: meta
 
-Tickets repo and project-wide docs for the SpaceTraders fleet, plus local-dev orchestration. No `package.json`; scripts are plain Node.
+Tickets repo and project-wide docs for the SpaceTraders fleet, plus local-dev orchestration. No root `package.json`; scripts are plain Node. `tools/swagger2openapi/` has its own `package.json`, used by `openapi-sync.yml`.
 
 | Path | Holds |
 |---|---|
@@ -19,8 +19,8 @@ Tickets repo and project-wide docs for the SpaceTraders fleet, plus local-dev or
 | `docker-compose.yml` | st-gateway, mysql, agent, navigation, fleet, auth, automation-postgres, automation, ai-service, built from sibling dirs |
 | `docs/agents/heinzelwerk/` | agent team docs: workspace map, learnings |
 
-- CI `validate.yml` (PR, push main): fixtures and OpenAPI validation; restricts `openapi-sync/*` PRs to their own file.
-- `openapi-sync.yml`: reusable workflow backends call on push to main; opens an auto-merging PR as App `vmpt-openapi-sync`.
+- CI `validate.yml` (PR, push main): fixtures validation, actionlint over the workflows, OpenAPI validation; restricts `openapi-sync/*` PRs to their own file.
+- `openapi-sync.yml`: reusable workflow agent-, auth-, fleet- and navigation-service call on push to main; opens an auto-merging PR as App `vmpt-openapi-sync`.
 
 ## Reference docs
 

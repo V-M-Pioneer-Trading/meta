@@ -270,9 +270,8 @@ Where things stand today:
   See [operations.md](operations.md#deployment-gaps).
 - **Merged, but not working**: spacetraders-mcp-server, which calls
   automation-service's admin routes with no credential and has been broken since
-  increment 1 gated them. Knob writes and replans now need `planner:advise`
-  and `POST /events` needs `events:write`; the MCP client sends no
-  `Authorization` header, so those writes get 401. Accepted rather than solved — see auth-design's
+  increment 1 gated them. Knob writes and replans now need `planner:advise`;
+  the MCP client sends no `Authorization` header, so those writes get 401. Accepted rather than solved — see auth-design's
   [Deferred, and tracked](design/auth-design.md#deferred-and-tracked).
 - **Known single-ship scope**: the planner and replan machinery are written to
   scale to N ships, but dispatch is still keyed to one configured mining ship.

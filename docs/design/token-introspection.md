@@ -1,18 +1,18 @@
 # What a service answers when it cannot verify a token itself
 
-*Status: **decided 2026-09-20, shipped 2026-09-29.** When it was decided, nothing here
-described how any service behaved — every service verified Clerk tokens locally
+*Status: **decided 2026-09-20, not shipped.** Nothing here describes how any
+service behaves today — today every service verifies Clerk tokens locally
 against `CLERK_JWT_KEY`. This document and
 [`fixtures/introspection.json`](../../fixtures/introspection.json) are step 1 of
 [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80); the rest of
-its eleven steps are what made it true, one service at a time. It was written as
-a specification; see the dated note below for what it describes now. The decision itself is
+its eleven steps are what will make it true, one service at a time. Read it as
+a specification, not as a description. The decision itself is
 [auth-design.md decision 21](auth-design.md#21-one-verifier-every-service-asks-auth-service-what-a-token-carries),
 which supersedes decision 4.*
 
 *Dated 2026-09-29: shipped. Every service that receives an `Authorization`
 header now behaves as this document says, and no service but auth-service
-verifies a token. The status above now carries the ship date; read the rest as a
+verifies a token. The status above is kept as written; read the rest as a
 description, with the dated notes below marking where practice and text part.*
 
 Normative for every service that receives an `Authorization` header:
@@ -540,12 +540,12 @@ conditions every implementation must answer identically.
 
 ## Minting a machine token
 
-*Status: **decided 2026-09-30, shipped 2026-10-01.** When it was decided, nothing in
-this section was current behaviour: automation-service minted its own token with a
-Clerk Machine Secret Key it held itself, and ai-service sent no credential. The
+*Status: **decided 2026-09-30, not shipped.** Nothing in this section is
+current behaviour: today automation-service mints its own token with a Clerk
+Machine Secret Key it holds itself, and ai-service sends no credential. The
 decision is
 [auth-design.md decision 22](auth-design.md#22-auth-service-mints-every-machine-token);
-the rollout was [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59).
+the rollout is [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59).
 This section is outside the normative scope above: it is not pinned by
 `fixtures/introspection.json`, and it binds only auth-service and the two
 callers of its client.*

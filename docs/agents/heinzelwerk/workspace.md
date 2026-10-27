@@ -30,7 +30,7 @@ spacetraders-mcp-server is not in active development and none is planned: take n
 
 ## Who calls whom
 
-- command-interface → agent-service, navigation-service, fleet-service, automation-service: HTTP with the operator's Clerk bearer, through CloudFront paths; contracts at each provider's `openapi.json` (automation-service: no spec, routes in its `CLAUDE.md`)
+- command-interface → agent-service, navigation-service, fleet-service, automation-service: HTTP with the operator's Clerk bearer, through CloudFront paths; contracts at each provider's `openapi.json` (automation-service: no spec, routes in its README "API" and "Authentication" sections)
 - automation-service → agent-service, fleet-service, navigation-service: HTTP with an M2M bearer from auth-service
 - automation-service → ai-service: anomaly webhook `POST /webhooks/anomaly` (`generic` format; `telegram` pages a chat instead); ai-service → automation-service: knobs (policy class only), digest, replan, events
 - spacetraders-mcp-server → automation-service (knobs, replan, metrics) and SpaceTraders directly
@@ -38,14 +38,15 @@ spacetraders-mcp-server is not in active development and none is planned: take n
 - fleet-service → agent-service `POST /contracts/{id}/deliveries`
 - every verifier (agent, fleet, navigation, automation, st-gateway) → auth-service `POST /auth/v1/introspect`; contract `meta/docs/design/token-introspection.md` + `meta/fixtures/introspection.json`
 - automation-service, ai-service → auth-service `POST /auth/v1/m2m-token`
-- TS services → `@v-m-pioneer-trading/clerk-client` and `@v-m-pioneer-trading/eslint-config`: release tarballs pinned by URL
-- every service's CI → V-M-Pioneer-Trading_infrastructure's SSM bootstrap document on push to main; backend CI → meta's reusable `openapi-sync.yml`
+- agent-, automation-, fleet-service, st-gateway → `@v-m-pioneer-trading/clerk-client` 2.0.1; ai-service still pins its predecessor `@v-m-pioneer-trading/introspection-client` 1.2.0 (M2M only)
+- agent-, auth-, automation-, fleet-service, st-gateway, command-interface, clerk-client → `@v-m-pioneer-trading/eslint-config` 1.1.0; ai-service has no lint config. All are release tarballs pinned by URL
+- agent-, auth-, automation-, fleet-, navigation-service and st-gateway CI → V-M-Pioneer-Trading_infrastructure's SSM bootstrap documents on push to main; agent-, auth-, fleet- and navigation-service CI → meta's reusable `openapi-sync.yml`. ai-service has no CI
 
 ## Cross-repo traps
 
-- Push to main deploys production in every service repo (SSM redeploy, or S3 sync for command-interface). Infra is applied by hand.
+- Push to main deploys production in every service repo with CI (SSM redeploy, or S3 sync for command-interface); ai-service has no CI and is not deployed. Infra is applied by hand.
 - A shared-package change lands in three steps: provider PR, release tag, then one bump PR per consumer.
-- A fixture change goes to `meta/fixtures/` first; vendored copies match meta's file apart from a header line naming the source (st-gateway pins the sha256 of its copy).
+- A fixture change goes to `meta/fixtures/` first. `introspection.json` copies are byte-identical; `gateway-errors.json` copies differ only in their `$comment` line. Five copies are sha256-pinned (the four introspection copies and agent-service's gateway-errors copy): re-vendor updates the pin in the same PR.
 - `meta/openapi/*.json` are bot-written copies; edit the service's own `openapi.json`.
 - auth-service's two secrets (`AUTH_SERVICE_SHARED_SECRET`, `AUTH_INTROSPECTION_SECRET`) must differ; st-gateway crash-loops without either.
 - An infra PR that adds an SSM document parameter is applied before the service CI change that passes it, or SSM rejects the deploy.
