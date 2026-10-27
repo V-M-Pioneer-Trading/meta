@@ -2,7 +2,7 @@
 
 *Synthesized from autopilot-design.md and design interviews, 2026-07-17. Triage: `ready-for-agent`. Suggested tracker home: `V-M-Pioneer-Trading/meta` (cross-cutting).*
 
-*Editorial correction, 2026-09-10: this record had the operator arming autopilot by pasting the **account** token — in Solution below, and in user story 2. By the glossary in [CONTEXT.md](../../CONTEXT.md) the account token only registers a new agent after a universe reset and cannot drive a ship; the credential meant was the **agent** token, and the term is corrected in both places. Nothing else in this record is rewritten — the paste-to-arm flow it describes was itself superseded by [auth-design.md](auth-design.md) decision 5, which took the game token out of the browser entirely.*
+*Editorial correction, 2026-09-10: this record had the operator arming autopilot by pasting the **account** token — in Solution below, and in user story 2. By the glossary in [GLOSSARY.md](../../GLOSSARY.md) the account token only registers a new agent after a universe reset and cannot drive a ship; the credential meant was the **agent** token, and the term is corrected in both places. Nothing else in this record is rewritten — the paste-to-arm flow it describes was itself superseded by [auth-design.md](auth-design.md) decision 5, which took the game token out of the browser entirely.*
 
 ## Problem Statement
 
