@@ -61,3 +61,30 @@ but auth-service verifies a token.*
   (anything else: a machine, a visitor, an inactive token, or no answer from
   the center at all). Derived by the gateway from the center's answer; never
   declared by a caller, and never a reason to reject one.
+
+## Autopilot
+
+- **Autopilot** — automation-service's engine: it assigns each ship a task and
+  drives it. _Avoid_: bot, automation.
+- **Status** — the autopilot's lifecycle state: `disarmed`, `armed`, `paused`
+  or `aborted`. An operator arms, pauses or aborts it.
+- **Mode** — `live` dispatches game actions; `shadow` scores and logs every
+  decision but dispatches nothing. A restart always comes back in shadow.
+  _Avoid_: dry-run.
+- **Task** — one ship's current assignment: a mining, contract or scout task.
+- **Scout** — the task that visits a market to refresh its prices for the
+  other tasks. _Avoid_: market intel.
+- **Tick** — one scheduler pass, in which every ship advances one action.
+- **Cycle** — one full round of a task, e.g. for mining: fly out, extract,
+  sell, return. A task's score is its credits per cycle over its cycle hours.
+- **Credits per hour** — the planner's single scoring unit.
+- **Replan** — re-scoring the candidates and reassigning tasks.
+- **Knob** — a named, bounded planner parameter, of class `model`, `policy` or
+  `alert`. A **policy knob** is the only class a machine may write.
+- **Reserve floor** — the credit balance the planner never spends below.
+- **Anomaly** — a detected deviation from expected fleet behaviour. A
+  **digest** summarises the anomalies in a time window.
+- **Supervisor** — ai-service's loop: it answers anomalies by writing policy
+  knobs and requesting a replan, and never drives a ship.
+- **Delivery** — cargo handed to a contract in the game. agent-service's
+  history row of one is a **delivery record**.
