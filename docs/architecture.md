@@ -84,10 +84,10 @@ token (see [below](#exactly-one-service-stores-the-game-token)).
 | Service | Stack | Role |
 |---|---|---|
 | [navigation-service](https://github.com/V-M-Pioneer-Trading/navigation-service) | Java 21 / Spring Boot / SQLite | Read-and-cache layer for universe data: waypoints, systems, market prices, shipyards |
-| [agent-service](https://github.com/V-M-Pioneer-Trading/agent-service) | Go / MySQL | Agent profile, ship list, contracts (read + accept/fulfill), contract delivery history, ship/cargo purchases and cargo sells, transaction history |
+| [agent-service](https://github.com/V-M-Pioneer-Trading/agent-service) | Node/TypeScript / MySQL | Agent profile, ship list, contracts (read + accept/fulfill), contract delivery history, ship/cargo purchases and cargo sells, transaction history |
 | [fleet-service](https://github.com/V-M-Pioneer-Trading/fleet-service) | Node/TypeScript | All ship *actions*: orbit, dock, navigate, extract, survey, refuel, deliver. Stateless |
-| [st-gateway](https://github.com/V-M-Pioneer-Trading/st-gateway) | Node/TypeScript | The only door to the SpaceTraders API: one global rate budget, priority queueing, centralized retries |
-| [auth-service](https://github.com/V-M-Pioneer-Trading/auth-service) | Go / SQLite | The only holder of the SpaceTraders account and agent tokens: hands the agent token to st-gateway, detects universe resets and re-registers. Also the only verifier of Clerk tokens: every other backend asks it, over `POST /auth/v1/introspect`, what a token carries |
+| [st-gateway](https://github.com/V-M-Pioneer-Trading/st-gateway) | Node/TypeScript | The only door to the SpaceTraders API for the deployed backends: one global rate budget, priority queueing, centralized retries. The one exception is spacetraders-mcp-server, a local operator tool (not deployed) that calls SpaceTraders directly with its own `SPACETRADERS_API_TOKEN` |
+| [auth-service](https://github.com/V-M-Pioneer-Trading/auth-service) | Node/TypeScript / SQLite | The only holder of the SpaceTraders account and agent tokens: hands the agent token to st-gateway, detects universe resets and re-registers. Also the only verifier of Clerk tokens: every other backend asks it, over `POST /auth/v1/introspect`, what a token carries |
 | [automation-service](https://github.com/V-M-Pioneer-Trading/automation-service) | Node/TypeScript / Postgres | The deterministic autopilot engine: planner, per-ship state machines, anomaly checks, event log |
 | [ai-service](https://github.com/V-M-Pioneer-Trading/ai-service) | Node/TypeScript | The AI supervisor: receives anomalies, runs a bounded OpenAI tool loop that may tune knobs or trigger replans |
 | [command-interface](https://github.com/V-M-Pioneer-Trading/command-interface) | React / Vite | LCARS-themed operator dashboard: fleet map, mining controls, autopilot switch, observability panels |
@@ -266,11 +266,13 @@ Where things stand today:
   [operations.md](operations.md#production-deployment)).
 - **Merged, but not deployed**: ai-service. It has no Terraform stack and no CI
   workflow at all, so the AI supervisor runs under local `docker compose` only —
-  and the anomaly webhook that would feed it is unset in production either way.
+  and the anomaly webhook that would feed it is wired through an optional SSM parameter in automation-service's Terraform either way (whether a value is set is an operator setting; automation-service issue #51 tracks the Telegram setup).
   See [operations.md](operations.md#deployment-gaps).
 - **Merged, but not working**: spacetraders-mcp-server, which calls
   automation-service's admin routes with no credential and has been broken since
-  increment 1 gated them. Accepted rather than solved — see auth-design's
+  increment 1 gated them. Knob writes and replans now need `planner:advise`
+  and `POST /events` needs `events:write`; the MCP client sends no
+  `Authorization` header, so those writes get 401. Accepted rather than solved — see auth-design's
   [Deferred, and tracked](design/auth-design.md#deferred-and-tracked).
 - **Known single-ship scope**: the planner and replan machinery are written to
   scale to N ships, but dispatch is still keyed to one configured mining ship.

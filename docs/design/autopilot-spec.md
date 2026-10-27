@@ -4,6 +4,8 @@
 
 *Editorial correction, 2026-09-10: this record had the operator arming autopilot by pasting the **account** token — in Solution below, and in user story 2. By the glossary in [GLOSSARY.md](../../GLOSSARY.md) the account token only registers a new agent after a universe reset and cannot drive a ship; the credential meant was the **agent** token, and the term is corrected in both places. Nothing else in this record is rewritten — the paste-to-arm flow it describes was itself superseded by [auth-design.md](auth-design.md) decision 5, which took the game token out of the browser entirely.*
 
+*Note, 2026-10-27: this record is frozen; what changed since. Arming by pasting a token was replaced by [auth-design.md](auth-design.md) decision 5, and auth-service now exists. The BFS-based route costs shipped as a fuel-aware route search (automation-service `src/routeCost.ts`). Shadow/dry-run mode, left out of the v1 must-haves, shipped ([autopilot-design.md decision 13](autopilot-design.md#13-restart-restores-the-lifecycle-in-shadow-never-live)). ai-service writes only `policy`-class knobs (automation-service `src/knobs.ts`).*
+
 ## Problem Statement
 
 Running the SpaceTraders enterprise today requires constant manual attention. Every mining run, contract delivery, refuel, and market sale is triggered by hand through the command-interface UI. The operator cannot step away: ships sit idle the moment a task completes, contracts expire unevaluated, and market knowledge goes stale. On top of that, the three backend services call the SpaceTraders API independently with no shared rate limiting, so any concurrent activity risks 429 errors (meta issue #1).

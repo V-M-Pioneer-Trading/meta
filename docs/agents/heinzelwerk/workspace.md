@@ -17,12 +17,14 @@ This repo is the **tickets repo** of a multi-repo workspace. Mode rules live in 
 | fleet-service | V-M-Pioneer-Trading/fleet-service | backend | see `fleet-service/docs/agents/heinzelwerk/team.md` |
 | navigation-service | V-M-Pioneer-Trading/navigation-service | backend | see `navigation-service/docs/agents/heinzelwerk/team.md` |
 | st-gateway | V-M-Pioneer-Trading/st-gateway | backend | see `st-gateway/docs/agents/heinzelwerk/team.md` |
-| spacetraders-mcp-server | V-M-Pioneer-Trading/spacetraders-mcp-server | backend | see `spacetraders-mcp-server/docs/agents/heinzelwerk/team.md` |
+| spacetraders-mcp-server | V-M-Pioneer-Trading/spacetraders-mcp-server | backend (not in active development) | see `spacetraders-mcp-server/docs/agents/heinzelwerk/team.md` |
 | command-interface | V-M-Pioneer-Trading/command-interface | frontend | see `command-interface/docs/agents/heinzelwerk/team.md` |
 | eslint-config | V-M-Pioneer-Trading/eslint-config | backend (shared package) | see `eslint-config/docs/agents/heinzelwerk/team.md` |
 | ts-introspection-client | V-M-Pioneer-Trading/clerk-client | backend (shared package) | see `ts-introspection-client/docs/agents/heinzelwerk/team.md` |
 | V-M-Pioneer-Trading_infrastructure | V-M-Pioneer-Trading/infrastructure | infra | see `V-M-Pioneer-Trading_infrastructure/docs/agents/heinzelwerk/team.md` |
 | meta | V-M-Pioneer-Trading/meta | backend (docs, fixtures, compose) | see `meta/docs/agents/heinzelwerk/team.md` |
+
+spacetraders-mcp-server is not in active development and none is planned: take no ticket there unless the ticket names it.
 
 `spacetraders-api-docs` is the upstream SpaceTradersAPI/api-docs checkout: read it for the game API, never edit it.
 
@@ -43,7 +45,7 @@ This repo is the **tickets repo** of a multi-repo workspace. Mode rules live in 
 
 - Push to main deploys production in every service repo (SSM redeploy, or S3 sync for command-interface). Infra is applied by hand.
 - A shared-package change lands in three steps: provider PR, release tag, then one bump PR per consumer.
-- A fixture change goes to `meta/fixtures/` first; vendored copies are byte-identical (st-gateway pins the sha256).
+- A fixture change goes to `meta/fixtures/` first; vendored copies match meta's file apart from a header line naming the source (st-gateway pins the sha256 of its copy).
 - `meta/openapi/*.json` are bot-written copies; edit the service's own `openapi.json`.
 - auth-service's two secrets (`AUTH_SERVICE_SHARED_SECRET`, `AUTH_INTROSPECTION_SECRET`) must differ; st-gateway crash-loops without either.
 - An infra PR that adds an SSM document parameter is applied before the service CI change that passes it, or SSM rejects the deploy.

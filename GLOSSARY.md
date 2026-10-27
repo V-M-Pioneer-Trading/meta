@@ -9,13 +9,13 @@ decisions; this file only fixes vocabulary.
 - **Operator** — a human signed in with Clerk from the dashboard. Carries a
   **session** whose `scope` claim lists their permissions.
 - **Machine** — a non-human caller with its own Clerk identity
-  (automation-service). Its token's `sub` starts `mch_`; an operator's starts
+  (automation-service, ai-service). Its token's `sub` starts `mch_`; an operator's starts
   `user_`. The center reports that distinction as **`kind`**, and st-gateway
   picks a queue from it.
 - **Visitor** — anyone with no session. May read what a backend serves
   anonymously; may not cause a live upstream call except where a backend
   explicitly allows it.
-- **Scope** — a permission literal in the session token. Three exist:
+- **Scope** — a permission literal in the session token. Five exist:
   - `fleet:control` — driving the fleet. Reversible, but moves credits and
     ships.
   - `agent:reset` — register / restore the agent token. Irreversible and
@@ -23,6 +23,11 @@ decisions; this file only fixes vocabulary.
   - `universe:refresh` — force navigation-service to re-fetch universe data
     live. Spends the shared rate budget; moves nothing. Not implied by
     `fleet:control`.
+  - `events:write` — append `ai_` audit rows to automation-service's event
+    log. Held by the ai-service machine and the operator.
+  - `planner:advise` — write knobs and request replans. Same holders as
+    `events:write`; neither is implied by `fleet:control`. What fences a
+    machine to `policy` knobs is `kind`, not this scope.
 
   Which routes each one actually gates is in auth-design.md, not this list: the
   table in [decision 2](docs/design/auth-design.md#2-spacetraders-is-publicly-readable-and-privately-writable)
@@ -34,6 +39,15 @@ decisions; this file only fixes vocabulary.
   never in any other service.
 - **Account token** — the SpaceTraders credential that can register an agent
   after a universe reset. Held by auth-service only.
+- **Vault** — auth-service in its first role: the store of the game token and
+  the account token. See **the center** for its second role.
+- **Universe reset** — SpaceTraders wiping every agent on its own schedule,
+  seen as a new `resetDate`. Recovered by registering a new agent with the
+  account token. _Avoid_: wipe (it survives only in state names such as
+  `WIPE_IMMINENT`).
+- **M2M token** — a short-lived token the center mints for a machine, which
+  presents its **caller secret** to get one. Carries the machine's fixed scopes
+  ([decision 22](docs/design/auth-design.md)). _Avoid_: machine token.
 
 *The next three names are fixed by
 [decision 21](docs/design/auth-design.md#21-one-verifier-every-service-asks-auth-service-what-a-token-carries),

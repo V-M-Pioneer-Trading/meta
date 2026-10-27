@@ -45,6 +45,8 @@ upstream condition:
 | error body | echoed raw into a plain-text response, 64 KiB cap | `error.message` parsed out, 500-char cap | **discarded** |
 | pacing headers | dropped | dropped | dropped |
 
+*Note, 2026-10-27: the table records the drift this document was written to end, not today's behaviour. All three clients now follow the rule above. agent-service is TypeScript now, not Go, and answers 504 when the gateway is unreachable; it reads at most 64 KiB of an error body (`MAX_ERROR_BODY`) and relays a message of at most 500 characters. navigation-service relays an upstream 5xx instead of collapsing it to 502. All three relay the four pacing headers (`Retry-After` and `X-RateLimit-*`).*
+
 The general form of the problem: a client service has strictly less information
 than the gateway. It did not talk to SpaceTraders and it cannot see whether a
 credential exists, so every verdict it re-decides is a guess overwriting a fact.

@@ -2,6 +2,8 @@
 
 *Outcome of design interviews (rounds 1–2), 2026-07-17. Status: agreed direction, pre-implementation.*
 
+*Note, 2026-10-27: this record is frozen; what changed since. Decision 7's BFS route cost shipped as a fuel-aware route search (automation-service `src/routeCost.ts`), which only does real work when the direct hop is out of fuel range. Decision 8's AI levers "market blacklists, role mix, loop on/off" did not ship: ai-service writes only `policy`-class knobs (automation-service `src/knobs.ts`), and no knob exists for those three. The shadow mode that "Considered, not required for v1" calls optional shipped, and [decision 13](#13-restart-restores-the-lifecycle-in-shadow-never-live) builds on it.*
+
 ## Vision
 
 A single "autopilot" switch. When on, the enterprise (fleet, contracts, trading) runs unattended. The core is **deterministic** — coded algorithms handle routing (BFS), price analysis, task scheduling. **AI sits on top as a monitor**: it watches health metrics, and when the situation drifts, it adjusts the automation plan. AI is never in the hot loop and never required for the fleet to keep running.

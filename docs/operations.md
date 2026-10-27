@@ -114,7 +114,7 @@ it is safe, and how to narrow the scopes it carries.
 Each backend exposes its own Swagger UI:
 
 - navigation-service: http://localhost:8081/swagger-ui.html
-- agent-service: http://localhost:8080/swagger/index.html
+- agent-service: http://localhost:8080/api/agent/swagger/
 - fleet-service: http://localhost:3001/api/fleet/swagger
 
 ## Production deployment
@@ -259,13 +259,18 @@ below.
   data source, outputs), a new CI workflow (test + build/push + SSM trigger),
   and a real `OPENAI_API_KEY` (see `configFromEnv()` in
   `ai-service/src/config.ts` — the process refuses to start without it).
-- **`ANOMALY_WEBHOOK_URL` is unset in production.** automation-service reads
+- **`ANOMALY_WEBHOOK_URL` is an optional SSM parameter in production.** automation-service reads
   it via `config.anomalyWebhookUrl` (`automation-service/src/config.ts`,
   defaults to `null`) and only delivers anomaly webhooks
   (`WebhookDelivery`, `automation-service/src/server.ts`) when it's set.
-  Nothing sets it in `automation-service/main.tf`'s bootstrap script today,
-  so even once ai-service is deployed, the anomaly → AI-supervisor pipeline
-  described in ai-service's README stays dark until this is added too.
+  `automation-service/main.tf`'s bootstrap script reads it from the optional
+  SSM parameter `automation-service-anomaly-webhook-url` (a missing parameter
+  means "not configured" and anomalies are recorded but not paged). Whether a
+  value is set is an operator setting; automation-service issue #51 tracks the
+  Telegram setup. Even once ai-service is deployed, the anomaly → AI-supervisor
+  pipeline described in ai-service's README stays dark until the parameter
+  points at ai-service in the `generic` format (a Telegram URL pages a chat
+  instead).
 
 ### Health-check routing
 

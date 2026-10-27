@@ -11,7 +11,7 @@ added 2026-09-20, reverses decision 4 and shipped 2026-09-29 through
 [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59).
 [Decision 23](#23-agent-service-and-auth-service-move-from-go-to-typescript),
 added 2026-10-03, moves agent-service and auth-service from Go to TypeScript;
-not shipped, see
+cut over 2026-10-04 (agent-service) and 2026-10-05 (auth-service), see
 [meta#103](https://github.com/V-M-Pioneer-Trading/meta/issues/103).*
 
 This document covers **two independent applications** that adopt the same vendor
@@ -48,7 +48,7 @@ game token never enters the browser.
         │                              │ /api/auth/v1/{status,agent-token,register}
         ▼                              ▼
 ┌───────────────────────────┐   ┌──────────────────────────┐
-│ navigation / agent /      │   │ auth-service (Go+SQLite) │
+│ navigation / agent /      │   │ auth-service (TS+SQLite) │
 │ fleet / automation        │   │  account + agent token   │
 │  verify the Clerk JWT     │   │  wipe poll, re-register  │
 │  locally (CLERK_JWT_KEY)  │   └────────────┬─────────────┘
@@ -323,9 +323,9 @@ which adopts the central authorization service this decision rejects — after
 six hand-ported verifiers drifted and two routes went unguarded. The reversal
 is the owner's, and the two objections above (a synchronous hop on the hot
 path, a single point of failure) are **accepted as costs, not refuted**: read
-them as still true and still paid. **Decision 21 has not shipped** — as of
-2026-09-20 every service verifies locally exactly as this decision describes,
-and this paragraph is the only thing about it that has changed. Rollout:
+them as still true and still paid. **Decision 21 shipped 2026-09-29**; until
+then every service verified locally exactly as this decision describes, and
+this paragraph was the only thing about it that changed. Rollout:
 [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80). What survives
 21 unchanged: `scope` rather than `role`, the claim sourced from
 `public_metadata` and never `unsafe_metadata`, and session-token customisation
@@ -1053,13 +1053,13 @@ production refresh, which otherwise 403s: the correct fail-closed state.*
 
 ### 21. One verifier: every service asks auth-service what a token carries
 
-*Status: **decided 2026-09-20; not shipped, not started.** Nothing in this
-decision is current behaviour. Today every service still verifies locally
+*Status: **decided 2026-09-20; shipped 2026-09-29 (dated note below).** When it
+was decided, nothing in this decision was current behaviour: every service verified locally
 against `CLERK_JWT_KEY` exactly as [decision 4](#4-auth-service-owns-game-credentials-only-authorization-is-a-library)
-describes, and st-gateway still derives its lane the same way. The rollout is
+describes, and st-gateway derived its lane the same way. The rollout was
 [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80), eleven steps
 across seven repositories; this document is its step 1. Every sentence below
-says what will be true, never what is. Check meta#80's checkboxes before
+says what would be true, apart from the dated note. Check meta#80's checkboxes before
 believing otherwise — this project has shipped documentation claiming a state
 the code was not in more than once, and the remedy is to date the claim and
 name the tracker.*
@@ -1416,12 +1416,12 @@ most. Rollback is redeploying the previous image tag.
 
 ### 22. auth-service mints every machine token
 
-*Status: **decided 2026-09-30; not shipped.** Today automation-service mints
+*Status: **decided 2026-09-30; shipped 2026-10-01 (dated note below).** When it was decided, automation-service minted
 its own Clerk M2M token exactly as
 [decision 19](#19-automation-service-authenticates-its-own-agentfleet-service-calls-with-a-clerk-m2m-token)
-describes, and ai-service sends no credential at all. The rollout is tracked in
+describes, and ai-service sent no credential at all. The rollout was tracked in
 [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59). Every
-sentence below says what will be true, never what is.*
+sentence below, apart from the dated note, says what would be true, never what is.*
 
 *Dated 2026-10-01: shipped. auth-service mints for both callers from Clerk
 Machines (auth-service#11, infrastructure#100); automation-service holds no Clerk key and fetches
@@ -1611,10 +1611,12 @@ is proven live.
 
 ### 23. agent-service and auth-service move from Go to TypeScript
 
-*Status: **decided 2026-10-03; not shipped.** Both services are Go today,
-exactly as the rest of this document describes them. The rollout is
-[meta#103](https://github.com/V-M-Pioneer-Trading/meta/issues/103); check its
-checkboxes before believing any sentence below describes what runs.*
+*Status: **decided 2026-10-03; cut over 2026-10-04 (agent-service) and 2026-10-05
+(auth-service).** Both services were Go when this was decided, and the rest of
+this document describes them that way. The rollout is
+[meta#103](https://github.com/V-M-Pioneer-Trading/meta/issues/103) (still open on
+2026-10-27); check its checkboxes before believing any sentence below describes
+what runs.*
 
 **agent-service and auth-service are rewritten in TypeScript, in place, one
 after the other, with strict 1:1 behaviour.** Every other backend that is not
@@ -1651,7 +1653,8 @@ holds a credential. That argument is accepted rather than refuted; see
   - agent-service: the direct-dependency allowlist and `npm audit`.
   - Both: `npm ci --ignore-scripts`, `npm audit --audit-level=high` in CI,
     Dependabot, and a distroless runtime image
-    (`gcr.io/distroless/nodejs24-debian12`) with no shell and no package
+    (`gcr.io/distroless/nodejs24-debian12`; auth-service has since moved to
+    `nodejs24-debian13`, because the debian12 tag is frozen at Node 24.14.0) with no shell and no package
     manager, the same posture auth-service's Go image has.
 - **A rewrite of working security code.** Introspection, JWT verification, the
   vault and M2M minting are ported, not redesigned, and only after
@@ -1794,6 +1797,9 @@ each filed after its service's cutover.
 
 ## New repository: `auth-service`
 
+*Note, 2026-10-27: auth-service moved to TypeScript (decision 23, cut over
+2026-10-05); the language reasoning below is history. SQLite stays.*
+
 **Go, SQLite.** Go because this service's job is holding a credential, and a
 static binary with a small dependency tree against an npm tree is the one place
 in this system where dependency surface is a security argument rather than a
@@ -1894,7 +1900,7 @@ fixed.
    [autopilot-spec.md](autopilot-spec.md)'s account/agent token confusion is
    corrected in place, with a dated note saying what was changed rather than a
    silent rewrite of a frozen record.
-5. **Central introspection.** ⬜ **Not started** — decided 2026-09-20, tracked
+5. **Central introspection.** ✅ **Shipped 2026-09-29** — decided 2026-09-20, tracked
    as [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80), which
    holds the eleven ordered steps and is the only place to read what has
    actually landed. auth-service gains `POST /auth/v1/introspect`; every other
