@@ -267,6 +267,8 @@ below.
   so even once ai-service is deployed, the anomaly → AI-supervisor pipeline
   described in ai-service's README stays dark until this is added too.
 
+  Correction (2026-10-28): the bootstrap sets ANOMALY_WEBHOOK_URL from the optional SSM parameter automation-service-anomaly-webhook-url (V-M-Pioneer-Trading_infrastructure/automation-service/main.tf:69) when that parameter exists; whether it is set in production is host state, see V-M-Pioneer-Trading_infrastructure/automation-service/main.tf:304.
+
 ### Health-check routing
 
 Every backend exposes a bare, unauthenticated `GET /health` for local
@@ -296,6 +298,8 @@ service an HTTPS page cannot address, and ai-service's `http://localhost`
 default is one, so in production it is not listed at all rather than shown as
 down. `MONITORED_SERVICES` is the list after that filter. auth-service is not
 in `SERVICE_DEFINITIONS` yet.
+
+Correction (2026-10-28): auth-service is in SERVICE_DEFINITIONS (key auth, path /api/auth/health), see command-interface/src/api/healthService.ts:45.
 
 ### When auth-service is down
 

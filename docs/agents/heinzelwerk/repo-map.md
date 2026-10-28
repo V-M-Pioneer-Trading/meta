@@ -46,3 +46,15 @@ Facts verified against origin/main cd0b1eb on 2026-10-27, each with `path:line`.
 - auth-design.md (1972), "## Decisions" :175, 23 decisions: 1 Two Clerk apps :177 | 2 publicly readable/privately writable :192 | 3 live anon reads :254 | 4 auth-service owns game creds, authz a library :285 | 5 st-gateway injects agent token :337 | 6 account token persisted :393 | 7 re-register on observed reset :423 | 8 auto-disarm not auto-register :466 | 9 isolated by network/secret/firewall :555 | 10 networkless verify, local keypair :643 | 11 ai-service shared secret :698 | 12 sign-in Google-only headless :730 | 13 no login wall :741 | 14 stagehopper API Gateway verify :759 | 15 stagehopper Authorization header :796 | 16 stagehopper keyspace cutover :813 | 17 stagehopper vanilla clerk-js :828 | 18 Increment 2 transition window :841 | 19 automation-service Clerk M2M :898 | 20 universe:refresh scope :1013 | 21 One verifier :1054 (#### :1101-1352) | 22 auth-service mints machine tokens :1417 | 23 agent/auth-service Go->TS :1612 (#### :1628-1763).
 - autopilot-design.md (165), "## Decisions" :39, 13 decisions: 1 automation-service engine :41 | 2 actions via existing services :45 | 3 st-gateway rate limiting :49 | 4 paste-to-arm token :53 | 5 V1 loops :59 | 6 planner + per-ship FSMs :67 | 7 scored credits/hour :75 | 8 ai-service knobs+replan :79 | 9 Postgres event log :102 | 10 safety rails :106 | 11 UI switch+dashboard :114 | 12 TypeScript :118 | 13 restart in shadow :122.
 - autopilot-spec.md (101): "Implementation Decisions" :60, "Testing Decisions" :76, none numbered. token-introspection.md (602): conformance :251, machine tokens :541, cites decision 21 :10, none numbered. upstream-errors.md (124): conformance :77, none numbered.
+
+## Reference docs
+
+- `docs/design/token-introspection.md`: read when parsing Authorization, writing a route guard, or minting a machine token.
+- `docs/design/upstream-errors.md`: read when changing how any client maps an st-gateway failure.
+- `docs/design/auth-design.md` "Infrastructure posture": read before touching any stack, the authnet firewall, or the token route.
+- `docs/design/autopilot-spec.md` "Testing Decisions": read before writing tests for automation-service or ai-service.
+- `docs/algorithms.md`: read before changing scoring, the planner, or an anomaly threshold.
+- `docs/architecture.md`: read before adding a service or changing who calls whom.
+- `docs/operations.md`: read when running the stack locally, debugging a production route, or when auth-service is down (503s, lanes flipping to background).
+- `dev-keys/README.md`: read before minting a dev token or touching the dev keypair.
+- `openapi/README.md`: read before adding a service's spec.

@@ -379,6 +379,8 @@ no token, or a token that fails verification all land in `background`. There
 is no `X-Priority` header any more — an earlier design let callers declare
 their class, which meant anything could promote itself by sending a string.
 
+Correction (2026-10-28): st-gateway does not verify signatures: it asks auth-service's introspection and lanes interactive only when the answer's kind is operator, background otherwise, see st-gateway/src/server.ts:15.
+
 The one way to break this silently is a backend that verifies the session and
 then does *not* forward it upstream: every call from it degrades to background
 with no error. **Any new backend that calls st-gateway must relay the inbound

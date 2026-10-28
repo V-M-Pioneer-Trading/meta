@@ -398,6 +398,8 @@ producible by the center at all, so its fixture test must classify them as
 client-only when it re-vendors. A copy is allowed to lag the original;
 it is never allowed to lead it.
 
+*Dated 2026-10-28: auth-service's vendored fixture is version 7, not version 1, see auth-service/contract/fixtures/introspection.json:3.*
+
 **`AUTH_INTROSPECTION_URL` is the full endpoint URL, `/auth/v1/introspect`
 included, and a client POSTs to it verbatim.** In production it is
 `http://localhost:3005/auth/v1/introspect` for the four `--network host`
@@ -444,6 +446,8 @@ takes a center that is already lying. It is still two answers where the
 contract promises one. Tracked, open, as
 [ts-introspection-client#6](https://github.com/V-M-Pioneer-Trading/ts-introspection-client/issues/6).
 
+*Dated 2026-10-28: the divergence is closed in code: the TS client rejects a center answer with a duplicate JSON key as malformed (fixture v5), see ts-introspection-client/src/strictJson.ts:110 and ts-introspection-client/src/center.ts:214.*
+
 **The suite stands up a stub center, and stops signing tokens.** That is the
 practical change for five repositories: no ephemeral keypair, no `jose` or
 `golang-jwt` or `nimbus-jose-jwt` in the test tree either, and the token
@@ -481,6 +485,8 @@ computes an answer it was given.
   the subject prefix — and exists only to pin who owns the rule. Without it, a
   client that kept `sub.startsWith("user_")`, which is precisely what
   st-gateway does today, passes every other case unchanged.
+
+  *Dated 2026-10-28: st-gateway takes its lane from the center's `kind` (operator = interactive) and never reads the sub prefix (st-gateway/src/server.ts:15-17), see st-gateway/src/server.ts:240.*
 - **The session tier is a tier.** Four cases cover a route that requires a
   verified session and no particular scope: no header, an inactive token, and
   an active token carrying **no scopes at all** — once with `"scope":""` and,

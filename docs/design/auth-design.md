@@ -14,6 +14,8 @@ added 2026-10-03, moves agent-service and auth-service from Go to TypeScript;
 not shipped, see
 [meta#103](https://github.com/V-M-Pioneer-Trading/meta/issues/103).*
 
+*Dated 2026-10-28: decision 23 has shipped: agent-service and auth-service are TypeScript, and the Go code was deleted from main at the cutover (auth-service#17), see auth-service/CLAUDE.md:3.*
+
 This document covers **two independent applications** that adopt the same vendor
 for different reasons: this project (`spacetraders`) and `mradomsky/stagehopper`.
 They share no code, no user pool and no session. They are recorded together
@@ -62,6 +64,8 @@ game token never enters the browser.
                              ▼
                      SpaceTraders API
 ```
+
+*Dated 2026-10-28: auth-service is TypeScript (SQLite kept), and since decision 21 no service except auth-service verifies the Clerk JWT locally, see auth-service/CLAUDE.md:3.*
 
 ## Current state being replaced
 
@@ -1398,6 +1402,8 @@ most. Rollback is redeploying the previous image tag.
   obstacle. The unknown is whether `jwt.Verify` accepts the M2M JWT that drives
   the autopilot, which only a live token can answer. The swap is local to one
   file; revisit with a live test.
+
+  *Dated 2026-10-28: the center is TypeScript and verifies with jose in src/jwt/verify.ts, so a clerk-sdk-go swap no longer applies, see auth-service/src/jwt/verify.ts:5.*
 - **Checking `azp`.** Not required by any JWT specification; it is an OIDC
   claim that Clerk's manual-verification guide lists as a step. Its purpose is
   CSRF protection when the token travels in a **cookie**. Here it travels only
@@ -1616,6 +1622,8 @@ exactly as the rest of this document describes them. The rollout is
 [meta#103](https://github.com/V-M-Pioneer-Trading/meta/issues/103); check its
 checkboxes before believing any sentence below describes what runs.*
 
+*Dated 2026-10-28: decision 23 has shipped: both services run TypeScript and no `.go` file remains in auth-service or agent-service, see auth-service/CLAUDE.md:3.*
+
 **agent-service and auth-service are rewritten in TypeScript, in place, one
 after the other, with strict 1:1 behaviour.** Every other backend that is not
 navigation-service — fleet-service, automation-service, st-gateway, ai-service
@@ -1819,6 +1827,8 @@ above is kept as written.*
 | `POST /auth/v1/register` | public | Clerk `agent:reset` scope | **Reset Agent** — mint a new agent with the account token |
 | `GET /health` | public | none | liveness |
 
+*Dated 2026-10-28: Restore Token and Reset Agent are served at POST /api/auth/v1/agent-token and POST /api/auth/v1/register (auth-service/src/generated/routes.ts:254, :286), not under /auth/v1/, see auth-service/src/controllers/operator.controller.ts:43.*
+
 `status` returns the state (`HEALTHY`, `WIPE_IMMINENT`, `APP_TOKEN_EXPIRED`,
 `UNCONFIGURED`), the agent symbol, the stored `resetDate` and the next predicted
 reset. It never returns a token in any state.
@@ -1910,6 +1920,8 @@ fixed.
    fleet-service forwards the caller's bearer on the call that reaches it, or
    contract delivery recording breaks. Infrastructure applies before every
    deploy, never after.
+
+   *Dated 2026-10-28: central introspection shipped 2026-09-29 (meta#80): auth-service serves POST /auth/v1/introspect and the other services call it, see auth-service/src/controllers/introspect.controller.ts:26.*
 
 **stagehopper is an independent stream** — separate tenant, separate repository,
 no shared code — and can land at any point.

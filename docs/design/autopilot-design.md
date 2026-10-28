@@ -95,6 +95,8 @@ The AI may adjust planner parameters (weights, market blacklists, role mix, loop
 
 *(Shipped as five: 2 and 5 measure one thing from two angles — a fleet that stops earning trips both — so they merged into a single `earnings_stalled` check whose conditions stay separately tunable, and which later gained a third, absolute one, `no_earnings`. See [algorithms.md](../algorithms.md#anomaly-detection).)*
 
+Correction (2026-10-28): Six checks run now: ship_idle, earnings_stalled, consecutive failures, error rate, market staleness and repeated_denied, see automation-service/src/anomaly.ts:175.
+
 **Runner: ai-service calls the OpenAI API.** On anomaly/review, ai-service composes context (anomaly + recent event log + current knobs) and runs a short OpenAI-backed tool-use loop, ending with knob adjustments/replan trigger and a written rationale appended to the event log.
 
 **MCP repo:** the current `spacetraders-mcp-server` (talks to ST API directly) becomes the foundation for a new repository: an MCP server targeting *our* system — automation-service metrics/anomalies/knobs/replan plus other internal APIs. Used by interactive MCP clients (Claude, IDEs) and available as a tool source for ai-service. The old server's dispatch engine is superseded by the planner.

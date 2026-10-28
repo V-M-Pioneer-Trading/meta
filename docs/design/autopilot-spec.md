@@ -20,10 +20,14 @@ A separate ai-service watches the operation: deterministic health checks in auto
 
 The operator arms autopilot by pasting the agent token in the UI, watches a bridge-view dashboard, and can pause or abort at any time.
 
+*Editorial correction, 2026-10-28: no token is pasted to arm the autopilot: arming requires a Clerk session with the fleet:control scope, verified through auth-service (pasted token removed, command-interface/src/hooks/queryKeys.ts:13), see automation-service/src/auth.ts:22.*
+
 ## User Stories
 
 1. As a fleet operator, I want a single autopilot on/off switch in the UI, so that my enterprise runs unattended once I turn it on.
 2. As a fleet operator, I want to arm autopilot by pasting my agent token (held in memory only), so that no service persists my credentials.
+
+   *Editorial correction, 2026-10-28: no token is pasted to arm the autopilot: arming requires a Clerk session with the fleet:control scope, and auth-service holds the agent token, see automation-service/src/auth.ts:22.*
 3. As a fleet operator, I want a pause mode that lets ships finish their current step before idling, so that I can halt operations without stranding cargo mid-task.
 4. As a fleet operator, I want an abort mode that stops all dispatching immediately, so that I have a hard kill switch when something goes wrong.
 5. As a fleet operator, I want the mining loop automated end-to-end (travel, survey, extract, refuel, sell at the best nearby market), so that mining income continues without my input.
