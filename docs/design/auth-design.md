@@ -14,6 +14,8 @@ added 2026-10-03, moves agent-service and auth-service from Go to TypeScript;
 not shipped, see
 [meta#103](https://github.com/V-M-Pioneer-Trading/meta/issues/103).*
 
+*Dated 2026-10-29: increments 3 and 4 are shipped (build order steps 3 and 4 below are marked done; st-gateway injects the agent token, see st-gateway/src/server.ts:245), and decision 23 is shipped: agent-service and auth-service are TypeScript with no tracked `.go` files (cutover commits auth-service 64e2cd0, agent-service bbe7163; see ../auth-service/src/controllers/introspect.controller.ts:26, ../agent-service/package.json:26).*
+
 This document covers **two independent applications** that adopt the same vendor
 for different reasons: this project (`spacetraders`) and `mradomsky/stagehopper`.
 They share no code, no user pool and no session. They are recorded together
@@ -1064,6 +1066,8 @@ believing otherwise — this project has shipped documentation claiming a state
 the code was not in more than once, and the remedy is to date the claim and
 name the tracker.*
 
+*Dated 2026-10-29: status above is stale: central introspection is live, see ../auth-service/src/controllers/introspect.controller.ts:26 and ../ts-introspection-client/src/center.ts:176.*
+
 *Note, 2026-09-29: shipped in full. Every service asks the center and verifies
 nothing locally: fleet-service, automation-service and st-gateway through
 ts-introspection-client 1.1.2 — st-gateway as a lane deriver only, with a
@@ -1088,6 +1092,8 @@ automation-service's, whose `GET`s ignore credentials by declaration. Decision 4
 practice, not only on paper, and so is decision 10's "every service": the rest
 of 10 now lives in auth-service alone. See their notes. Everything above
 and below is kept as written.*
+
+*Dated 2026-10-29: "every client vendors fixture version 4, and so does auth-service" is stale: every vendored copy is byte-identical to meta's version 7, see ../auth-service/contract/fixtures/introspection.json:3.*
 
 **auth-service becomes the only component that verifies a Clerk token.** Every
 other service sends the token it received to auth-service, gets back the
@@ -1122,6 +1128,8 @@ carry in every service. Six of them later, the bet has visibly lost.
   to put a guard in front of. A per-service library cannot make that failure
   impossible, because the library is only ever as good as the call site that
   forgets it.
+
+  *Dated 2026-10-29: meta#71 is closed: `POST /contracts/{id}/deliveries` now requires `fleet:control`, see ../agent-service/src/auth.ts:39.*
 
 The fix that makes it structural is not the hop by itself, it is the hop plus
 **default-deny on mutating methods**: a route on a mutating method that
@@ -1260,6 +1268,8 @@ could find no declaration for must fail closed and loudly, never fall back to
 `"none"`. auth-service's vendored copy
 pins version 1 at meta `358231f` and is re-vendored at **step 11** of the epic;
 it stays valid because versions 2 and 3 only add cases a *client* answers.
+
+*Dated 2026-10-29: auth-service's vendored copy is no longer version 1 at `358231f`; it is byte-identical to meta's version 7, see ../auth-service/contract/fixtures/introspection.json:3.*
 
 The `401` and `403` sentences are the ones four services already answer with;
 they are preserved byte for byte, and automation-service's scope-naming `403`
@@ -1422,6 +1432,8 @@ its own Clerk M2M token exactly as
 describes, and ai-service sends no credential at all. The rollout is tracked in
 [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59). Every
 sentence below says what will be true, never what is.*
+
+*Dated 2026-10-29: status above is stale: shipped, automation-service no longer mints its own token, see ../automation-service/src/config.ts:49 and ../auth-service/src/controllers/m2m.controller.ts:22.*
 
 *Dated 2026-10-01: shipped. auth-service mints for both callers from Clerk
 Machines (auth-service#11, infrastructure#100); automation-service holds no Clerk key and fetches
@@ -1615,6 +1627,8 @@ is proven live.
 exactly as the rest of this document describes them. The rollout is
 [meta#103](https://github.com/V-M-Pioneer-Trading/meta/issues/103); check its
 checkboxes before believing any sentence below describes what runs.*
+
+*Dated 2026-10-29: status above is stale: shipped, both services are TypeScript with 0 tracked `.go` files (auth-service 64e2cd0, agent-service bbe7163), see ../auth-service/package.json and ../agent-service/package.json:26.*
 
 **agent-service and auth-service are rewritten in TypeScript, in place, one
 after the other, with strict 1:1 behaviour.** Every other backend that is not
@@ -1811,6 +1825,8 @@ transitive-dependency snapshot checked in CI, `npm ci --ignore-scripts`,
 for the reasons given, now through the built-in `node:sqlite`. The paragraph
 above is kept as written.*
 
+*Dated 2026-10-29: the port has shipped: auth-service is TypeScript (`node:sqlite`), see ../auth-service/src/db/credential.ts:1-4; "Go, SQLite" above is history.*
+
 | Route | Reachable from | Auth | Purpose |
 |---|---|---|---|
 | `GET /auth/v1/token` | `authnet` only, no Caddy route | shared secret | st-gateway fetches the agent token |
@@ -1818,6 +1834,8 @@ above is kept as written.*
 | `POST /auth/v1/agent-token` | public | Clerk `agent:reset` scope | **Restore Token** — accept a regenerated agent token for the existing agent |
 | `POST /auth/v1/register` | public | Clerk `agent:reset` scope | **Reset Agent** — mint a new agent with the account token |
 | `GET /health` | public | none | liveness |
+
+*Dated 2026-10-29: route table is stale: `GET /auth/v1/token` is also published on loopback (`-p 127.0.0.1:`, ../V-M-Pioneer-Trading_infrastructure/auth-service/main.tf:521), `agent-token` and `register` are served under `/api/auth/v1/` (../auth-service/src/controllers/operator.controller.ts:43,52,75), and `POST /auth/v1/introspect` and `POST /auth/v1/m2m-token` are missing (../auth-service/src/controllers/introspect.controller.ts:26, ../auth-service/src/controllers/m2m.controller.ts:22).*
 
 `status` returns the state (`HEALTHY`, `WIPE_IMMINENT`, `APP_TOKEN_EXPIRED`,
 `UNCONFIGURED`), the agent symbol, the stored `resetDate` and the next predicted
@@ -1910,6 +1928,8 @@ fixed.
    fleet-service forwards the caller's bearer on the call that reaches it, or
    contract delivery recording breaks. Infrastructure applies before every
    deploy, never after.
+
+*Dated 2026-10-29: step 5 is shipped: central introspection is live, see ../st-gateway/src/server.ts:240 and ../auth-service/src/controllers/introspect.controller.ts:26.*
 
 **stagehopper is an independent stream** — separate tenant, separate repository,
 no shared code — and can land at any point.

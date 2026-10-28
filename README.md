@@ -48,6 +48,8 @@ Start with [the decision model on one page](docs/algorithms.md#the-decision-mode
 | [command-interface](https://github.com/V-M-Pioneer-Trading/command-interface) | React | LCARS-themed operator dashboard |
 | [spacetraders-mcp-server](https://github.com/V-M-Pioneer-Trading/spacetraders-mcp-server) | Node/TS | MCP tools for interactive operators (Claude, IDEs) |
 
+Correction (2026-10-29): agent-service and auth-service are TypeScript, not Go, see ../agent-service/package.json:26,40 and ../auth-service/src/db/credential.ts:1-4.
+
 ## Quickstart
 
 With all repos checked out as siblings, from `meta/`:

@@ -149,6 +149,8 @@ Rejected:
 | new MCP server (name TBD) | Toolset against our system for MCP clients + ai-service; based on `spacetraders-mcp-server` |
 | `auth-service` (later) | Credential ownership, replaces paste-to-arm |
 
+*Note, 2026-10-29: `auth-service` exists and holds the credentials (see ../auth-service/src/vault.ts, ../auth-service/src/db/credential.ts:1-4); it replaces paste-to-arm, as decision 4 above notes.*
+
 ## Build order
 
 1. **st-gateway** — build queue, route nav/agent/fleet services through it. Closes meta issue #1; unblocks everything else.

@@ -34,3 +34,5 @@ The sync authenticates as an org-owned GitHub App installed on this repository
 only, with Contents and Pull requests write; its Client ID and private key are
 the org secrets `OPENAPI_SYNC_CLIENT_ID` and `OPENAPI_SYNC_PRIVATE_KEY`,
 granted to the three calling repositories only.
+
+Correction (2026-10-29): four repositories call openapi-sync.yml@main (agent-, auth-, fleet-, navigation-service), see ../agent-service/.github/workflows/container.yml:338 and ../navigation-service/.github/workflows/container.yml:237; the org-secret grant itself is not visible in code, check it covers all four.

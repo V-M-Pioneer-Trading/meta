@@ -275,6 +275,8 @@ investigates. Every threshold is a bounded `alert` knob.
 | `error_rate` | The error fraction of recent ship-task events — mining, contract or scout alike — exceeds a threshold |
 | `market_stale` | A market in active use hasn't been repriced in N minutes |
 
+
+Correction (2026-10-29): six checks run, not five: `repeated_denied` is missing here, and `ship_idle` runs only while armed and live, see ../automation-service/src/anomaly.ts:171-185 and :128.
 `earnings_stalled` merges what used to be two checks. They measured one thing
 from two angles — a fleet that stops earning trips both — so firing separately
 made the digest look busier than the fleet was. A third reading, `no_earnings`,
@@ -378,6 +380,8 @@ interactive lane; a machine token (automation-service's M2M, `sub` `mch_…`),
 no token, or a token that fails verification all land in `background`. There
 is no `X-Priority` header any more — an earlier design let callers declare
 their class, which meant anything could promote itself by sending a string.
+
+Correction (2026-10-29): st-gateway never reads the token or `sub`; it asks auth-service introspection (250 ms timeout) and gives the interactive lane to an active answer of kind `operator`, see ../st-gateway/src/server.ts:15-24, :62, :239-240.
 
 The one way to break this silently is a backend that verifies the session and
 then does *not* forward it upstream: every call from it degrades to background

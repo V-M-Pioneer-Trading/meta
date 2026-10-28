@@ -10,6 +10,8 @@ a specification, not as a description. The decision itself is
 [auth-design.md decision 21](auth-design.md#21-one-verifier-every-service-asks-auth-service-what-a-token-carries),
 which supersedes decision 4.*
 
+*Dated 2026-10-29: "not shipped" is stale: shipped, see ../auth-service/src/controllers/introspect.controller.ts:26 and ../ts-introspection-client/src/center.ts:176.*
+
 *Dated 2026-09-29: shipped. Every service that receives an `Authorization`
 header now behaves as this document says, and no service but auth-service
 verifies a token. The status above is kept as written; read the rest as a
@@ -193,6 +195,8 @@ automation-service and st-gateway now extract through ts-introspection-client,
 and navigation-service through its Java client, each driven by fixture
 version 4.
 
+*Dated 2026-10-29: "fixture version 4" is stale: every copy is meta's version 7, see ../auth-service/contract/fixtures/introspection.json:3.*
+
 ## Why asking, rather than each service verifying
 
 Because six copies of the same verification produced six slightly different
@@ -372,6 +376,8 @@ client re-vendors version 4: ts-introspection-client next, agent-service and
 navigation-service at step 11 of
 [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80).
 
+*Dated 2026-10-29: "re-vendors version 4" is stale: all clients hold version 7, see ../navigation-service/src/test/resources/introspection/introspection.json.*
+
 Version 3
 (2026-09-25, [meta#87](https://github.com/V-M-Pioneer-Trading/meta/issues/87))
 adds two calling-service cases and one gateway case in which the center's
@@ -397,6 +403,8 @@ it stays valid in the meantime because versions 2, 3, 4 and 5 only add cases a
 producible by the center at all, so its fixture test must classify them as
 client-only when it re-vendors. A copy is allowed to lag the original;
 it is never allowed to lead it.
+
+*Dated 2026-10-29: auth-service no longer pins version 1 at `358231f`; its copy is byte-identical to meta's version 7, see ../auth-service/contract/fixtures/introspection.json:3.*
 
 **`AUTH_INTROSPECTION_URL` is the full endpoint URL, `/auth/v1/introspect`
 included, and a client POSTs to it verbatim.** In production it is
@@ -435,6 +443,8 @@ this is the reading to take. The fixture's wording — and its `$comment`'s
 the file's sha256, and a corrected sentence would cost a re-vendor in every
 repository to say nothing new.
 
+*Dated 2026-10-29: the split is stale: the fixture has 56 calling-service and 19 gateway cases, ts-introspection-client drives both groups (../ts-introspection-client/test/conformance.test.ts:178), and st-gateway also runs them (../st-gateway/src/__tests__/lane.conformance.test.ts:212).*
+
 *Dated 2026-09-29 — an open divergence the fixture does not pin.* When the
 center's answer repeats a JSON key, the TS client takes the last value, as
 `JSON.parse` does, where the Go and Java clients refuse the body as malformed
@@ -443,6 +453,8 @@ loopback or `authnet`, and it never repeats a key, so reaching the difference
 takes a center that is already lying. It is still two answers where the
 contract promises one. Tracked, open, as
 [ts-introspection-client#6](https://github.com/V-M-Pioneer-Trading/ts-introspection-client/issues/6).
+
+*Dated 2026-10-29: no longer open: the TS client refuses a duplicate JSON key, see ../ts-introspection-client/src/strictJson.ts:110.*
 
 **The suite stands up a stub center, and stops signing tokens.** That is the
 practical change for five repositories: no ephemeral keypair, no `jose` or
@@ -481,6 +493,8 @@ computes an answer it was given.
   the subject prefix — and exists only to pin who owns the rule. Without it, a
   client that kept `sub.startsWith("user_")`, which is precisely what
   st-gateway does today, passes every other case unchanged.
+
+  *Dated 2026-10-29: st-gateway no longer does this; it has no `user_` check and lanes by the center's `kind`, see ../st-gateway/src/server.ts:17 and :240.*
 - **The session tier is a tier.** Four cases cover a route that requires a
   verified session and no particular scope: no header, an inactive token, and
   an active token carrying **no scopes at all** — once with `"scope":""` and,
@@ -549,6 +563,8 @@ the rollout is [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59).
 This section is outside the normative scope above: it is not pinned by
 `fixtures/introspection.json`, and it binds only auth-service and the two
 callers of its client.*
+
+*Dated 2026-10-29: "not shipped" is stale: shipped, see ../auth-service/src/controllers/m2m.controller.ts:22.*
 
 *Dated 2026-10-01: shipped as written. Read the section as a description.*
 

@@ -115,6 +115,8 @@ Each backend exposes its own Swagger UI:
 
 - navigation-service: http://localhost:8081/swagger-ui.html
 - agent-service: http://localhost:8080/swagger/index.html
+
+  *Note, 2026-10-29: the real agent-service path is `/api/agent/swagger/` (the bare prefix without a slash is 404), see ../agent-service/src/swagger.ts:24,94.*
 - fleet-service: http://localhost:3001/api/fleet/swagger
 
 ## Production deployment
@@ -266,6 +268,8 @@ below.
   Nothing sets it in `automation-service/main.tf`'s bootstrap script today,
   so even once ai-service is deployed, the anomaly → AI-supervisor pipeline
   described in ai-service's README stays dark until this is added too.
+
+*Note, 2026-10-29: automation-service's bootstrap script now reads the optional SSM parameter `automation-service-anomaly-webhook-url` and exports it when present, see ../V-M-Pioneer-Trading_infrastructure/automation-service/main.tf:69,304-326; whether production is still unset depends on that parameter (check SSM).*
 
 ### Health-check routing
 

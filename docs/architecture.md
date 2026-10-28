@@ -93,6 +93,8 @@ token (see [below](#exactly-one-service-stores-the-game-token)).
 | [command-interface](https://github.com/V-M-Pioneer-Trading/command-interface) | React / Vite | LCARS-themed operator dashboard: fleet map, mining controls, autopilot switch, observability panels |
 | [spacetraders-mcp-server](https://github.com/V-M-Pioneer-Trading/spacetraders-mcp-server) | Node/TypeScript | MCP server exposing the same inspection/knob/replan surface to interactive clients (Claude, IDEs) |
 
+Correction (2026-10-29): agent-service and auth-service are TypeScript (mysql2, `node:sqlite`), not Go, see ../agent-service/package.json:26,40 and ../auth-service/src/db/credential.ts:1-10.
+
 Each repo's README covers its own API and development setup in detail.
 
 ## Service boundaries
@@ -158,6 +160,8 @@ already decided what went wrong — it is the only one that talked to the game,
 and the only one that can see whether a credential exists. A client classifies
 exactly one condition, "the gateway did not answer me", and relays everything
 else with the gateway's own status, message and error code.
+
+Correction (2026-10-29): the numeric gateway error code is deliberately not relayed; clients lift only `error.message`, see docs/design/upstream-errors.md:112-118 and ../agent-service/src/gateway/errors.ts:60-75.
 
 They had drifted into three different answers for the same condition. The one
 that costs real information: navigation-service collapsed every upstream 5xx to
