@@ -2,6 +2,8 @@
 
 *Outcome of design interviews (rounds 1–2), 2026-07-17. Status: agreed direction, pre-implementation.*
 
+*Note, 2026-10-29: no longer pre-implementation. st-gateway and automation-service run, with arm/pause/abort and shadow mode live, see V-M-Pioneer-Trading/automation-service src/server.ts:394-405,420-421, V-M-Pioneer-Trading/automation-service src/autopilotState.ts:2.*
+
 ## Vision
 
 A single "autopilot" switch. When on, the enterprise (fleet, contracts, trading) runs unattended. The core is **deterministic** — coded algorithms handle routing (BFS), price analysis, task scheduling. **AI sits on top as a monitor**: it watches health metrics, and when the situation drifts, it adjusts the automation plan. AI is never in the hot loop and never required for the fleet to keep running.

@@ -370,6 +370,8 @@ token bucket (default ~2 requests/second). Two FIFO queues share the budget:
 interactive always drained first — the dashboard stays responsive while the
 autopilot saturates the rest.
 
+Correction (2026-10-29): the interactive lane is not "UI-originated"; it is the lane st-gateway picks when the center answers for an active `operator`, whatever sent the call, see V-M-Pioneer-Trading/st-gateway src/server.ts:240, V-M-Pioneer-Trading/clerk-client src/gateway.ts:54-56
+
 Classification is derived from a **verified identity**, never declared
 (auth-design.md decision 2). The caller's `Authorization` — a Clerk session —
 is forwarded verbatim by agent/navigation/fleet-service, and st-gateway checks
@@ -378,6 +380,8 @@ interactive lane; a machine token (automation-service's M2M, `sub` `mch_…`),
 no token, or a token that fails verification all land in `background`. There
 is no `X-Priority` header any more — an earlier design let callers declare
 their class, which meant anything could promote itself by sending a string.
+
+Correction (2026-10-29): st-gateway checks no signature and never reads `sub`; it introspects every token at auth-service, and `kind: operator` (active) earns the interactive lane while anything else, center down included, lands in `background`, see V-M-Pioneer-Trading/st-gateway src/server.ts:189-195, V-M-Pioneer-Trading/clerk-client src/gateway.ts:54-56
 
 The one way to break this silently is a backend that verifies the session and
 then does *not* forward it upstream: every call from it degrades to background

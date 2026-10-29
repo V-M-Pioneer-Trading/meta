@@ -4,6 +4,8 @@
 
 *Editorial correction, 2026-09-10: this record had the operator arming autopilot by pasting the **account** token — in Solution below, and in user story 2. By the glossary in [CONTEXT.md](../../CONTEXT.md) the account token only registers a new agent after a universe reset and cannot drive a ship; the credential meant was the **agent** token, and the term is corrected in both places. Nothing else in this record is rewritten — the paste-to-arm flow it describes was itself superseded by [auth-design.md](auth-design.md) decision 5, which took the game token out of the browser entirely.*
 
+Correction (2026-10-29): the link above to `CONTEXT.md` is dead; the glossary is now `GLOSSARY.md` at the repo root, which defines the account token, see GLOSSARY.md:60.
+
 ## Problem Statement
 
 Running the SpaceTraders enterprise today requires constant manual attention. Every mining run, contract delivery, refuel, and market sale is triggered by hand through the command-interface UI. The operator cannot step away: ships sit idle the moment a task completes, contracts expire unevaluated, and market knowledge goes stale. On top of that, the three backend services call the SpaceTraders API independently with no shared rate limiting, so any concurrent activity risks 429 errors (meta issue #1).
@@ -66,6 +68,9 @@ The operator arms autopilot by pasting the agent token in the UI, watches a brid
 - v1 loops: mining, contracts, market intel/scouting. (Expansion, arbitrage, multi-system are v2 — see Out of Scope.)
 - Persistence: one Postgres database for automation-service — plan and task assignments, per-ship FSM state, knob table (value + default + min/max), append-only event/decision log, metric rollups.
 - Anomaly detection: six deterministic checks, each an AI-tunable bounded knob — ship idle >10 min; fleet profit/hour <50% of 6 h rolling average; ≥3 consecutive task failures on one ship; ST error rate >10% over 5 min; credits net-flat over 2 h; market intel staleness over threshold for markets in active use. *(Shipped as five: the profit-collapse and net-flat-credits checks merged into one `earnings_stalled`, both conditions still separately tunable.)*
+
+  *Editorial correction, 2026-10-29: six checks run now, not five: `repeated_denied` (the game refusing the same call over and over) was added, see V-M-Pioneer-Trading/automation-service src/anomaly.ts:342-348, V-M-Pioneer-Trading/automation-service src/fleetEvents.ts:102.*
+
 - Anomaly transport: automation-service persists the anomaly, then POSTs a webhook to ai-service with retry/backoff and a dedupe key; ai-service also pulls an event-log digest on an hourly scheduled review. No message broker.
 - AI runner: ai-service composes context (anomaly, recent events, current knobs) and runs a short OpenAI-API tool-use loop ending in bounded knob writes and/or a replan trigger, plus a rationale appended to the event log. The deterministic core is authoritative; AI outages degrade to "no tuning", never "no fleet".
 - Auth: token pasted in the UI to arm autopilot, held in memory by automation-service and forwarded as Bearer downstream; restart disarms. Existing pass-through auth unchanged. *(Superseded: the token half by [auth-design.md](auth-design.md); "restart disarms" by owner decision Q29 = C, 2026-10-05, [autopilot-design.md decision 13](autopilot-design.md#13-restart-restores-the-lifecycle-in-shadow-never-live). A restart now restores armed/paused state, always in shadow, and raises an alert when live was lost. Live never resumes without the owner.)*
