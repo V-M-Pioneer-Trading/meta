@@ -9,7 +9,7 @@ decisions; this file only fixes vocabulary.
 - **Operator** — a human signed in with Clerk from the dashboard. Carries a
   **session** whose `scope` claim lists their permissions.
 - **Machine** — a non-human caller with its own Clerk identity
-  (automation-service). Its token's `sub` starts `mch_`; an operator's starts
+  (automation-service, ai-service: `../auth-service/src/config.ts:33-34`). Its token's `sub` starts `mch_`; an operator's starts
   `user_`. The center reports that distinction as **`kind`**, and st-gateway
   picks a queue from it.
 - **Visitor** — anyone with no session. May read what a backend serves
@@ -122,7 +122,7 @@ but auth-service verifies a token.*
   The AI supervisor may write `policy` knobs only.
 - **Reserve floor** — the credit balance the planner never spends past: work
   whose estimated cost would breach it is dropped, not scored against.
-  _Avoid_: cash floor. No code identifier uses it.
+  _Avoid_: cash floor. No code identifier uses it; exempt text: the knob description and a scoring comment still say "cash floor" (`../automation-service/src/knobs.ts:179`, `../automation-service/src/scoring.ts:116`).
 - **Field** — an asteroid field: a mining target.
 - **Cycle** — one round of a task, travel and work included; the planner
   prices every task as credits per cycle over cycle hours.

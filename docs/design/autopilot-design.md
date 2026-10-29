@@ -2,7 +2,7 @@
 
 *Outcome of design interviews (rounds 1–2), 2026-07-17. Status: agreed direction, pre-implementation.*
 
-*Note, 2026-10-29: no longer pre-implementation. st-gateway and automation-service run, with arm/pause/abort and shadow mode live, see automation-service/src/server.ts:395-407, automation-service/src/autopilotState.ts:2.*
+*Note, 2026-10-29: no longer pre-implementation. st-gateway and automation-service run, with arm/pause/abort and shadow mode live, see V-M-Pioneer-Trading/automation-service src/server.ts:394-405,420-421, V-M-Pioneer-Trading/automation-service src/autopilotState.ts:2.*
 
 ## Vision
 

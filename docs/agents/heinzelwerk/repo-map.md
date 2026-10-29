@@ -41,9 +41,9 @@ Verified against cd0b1eb 2026-10-29.
 - Already current: closes stale PR (`.github/workflows/openapi-sync.yml:207-215`); else force-push `openapi-sync/<service>`, `gh pr create`, `gh pr merge --auto --squash` (`.github/workflows/openapi-sync.yml:216-227`)
 
 ## Local stack (docker-compose.yml)
-- Project `spacetraders` (`docker-compose.yml:1`); up from `meta/` with all siblings checked out: `docker compose up --build` (`README.md:53-56`, `docs/operations.md:30-34`)
+- Project `spacetraders` (`docker-compose.yml:1`); up from `meta/` with all siblings checked out: `docker compose up --build` (`README.md:55-58`, `docs/operations.md:30-34`)
 - Host ports: st-gateway 3002 (`docker-compose.yml:9`), mysql 3306 (`:35`), agent-service 8080→80 (`:54`), navigation-service 8081→8080 (`:82`), fleet-service 3001 (`:104`), auth-service 8082→80 (`:126`), automation-postgres 5432 (`:184`), automation-service 3003 (`:202`), ai-service 3004 (`:243`)
-- Builds `../<service>` incl. parked ai-service (`docker-compose.yml:240`); no command-interface: `npm run dev` there (`README.md:59-60`)
+- Builds `../<service>` incl. parked ai-service (`docker-compose.yml:240`); no command-interface: `npm run dev` there (`README.md:61-62`)
 - `MINING_SHIP_SYMBOL`, `OPENAI_API_KEY` have no default (`.env.example:6,9`, `docker-compose.yml:211,253`)
 - auth-service gets dev public key, dev M2M signing key, `./dev-keys` mounted read-only (`docker-compose.yml:137,159,169`)
 - st-gateway has no `depends_on` auth-service on purpose: cycle (`docker-compose.yml:13-18`)
@@ -73,8 +73,7 @@ Verified against cd0b1eb 2026-10-29.
 - Fixture change: meta first, re-copy, update SOURCE commit + sha and code literals (`../navigation-service/src/test/resources/introspection/SOURCE.txt:16`)
 - openapi-sync.yml called `@main` by every backend; breaking it breaks their main runs (`.github/workflows/validate.yml:48-51`)
 - Sync PRs may touch only their own spec (`openapi/README.md:27-31`)
-- `docs/design/token-introspection.md:3` says "decided, not shipped": stale vs `README.md:33` "shipped 2026-09-29"
-- `openapi/README.md:36` says org secrets granted to "three calling repositories"; four call the workflow (unverified: org secret settings need org admin)
+- `openapi/README.md:36` says org secrets are granted to "three calling repositories"; they are granted to four, agent-, auth-, fleet-, navigation-service (verified 2026-10-29 @ cd0b1eb: `gh api orgs/V-M-Pioneer-Trading/actions/secrets/OPENAPI_SYNC_CLIENT_ID/repositories` → agent-service, auth-service, fleet-service, navigation-service)
 - `README.md:42,45` list agent-service and auth-service as Go; both moved to TypeScript (`docs/design/auth-design.md:1619`)
 
 ## Reference docs

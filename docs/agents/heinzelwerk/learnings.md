@@ -10,10 +10,10 @@ Curated by tech-lead at the end of each team run, merged by a human. Max 80 line
 - **warning** (adopted: meta/dev-keys/README.md): dev keypair covers backend only; the real dashboard locally needs a Clerk development instance, no fake-session path, see ../command-interface/src/main.tsx:23
 - **discovery** (adopted: meta/dev-keys/README.md): CI never uses the committed dev keypair; auth-service tests generate ephemeral keys, see ../auth-service/src/testSupport/keyCases.ts:91
 
-## V-M-Pioneer-Trading_infrastructure
+## infrastructure
 - **warning** (adopted: meta/docs/design/auth-design.md): authnet iptables guards must match auth-service's single IP (a /32), never the subnet; a subnet rule broke CloudFront ingress and st-gateway DNS on 2026-08-23 with every `/health` 200, see ../V-M-Pioneer-Trading_infrastructure/auth-service/main.tf:346
-- **warning** (adopted: V-M-Pioneer-Trading_infrastructure/README.md): set `anomaly_webhook_format`/`anomaly_telegram_chat_id` in automation-service's terraform.tfvars, never `-var`; the next apply silently reverts to `generic`, see ../V-M-Pioneer-Trading_infrastructure/automation-service/variables.tf:46
-- **warning** (adopted: V-M-Pioneer-Trading_infrastructure/README.md): bootstrap scripts must `docker stop -t 9 <svc>` before `docker rm -f` (SIGKILL skips graceful shutdown), see ../V-M-Pioneer-Trading_infrastructure/automation-service/main.tf:338
+- **warning** (adopted: infrastructure/README.md): set `anomaly_webhook_format`/`anomaly_telegram_chat_id` in automation-service's terraform.tfvars, never `-var`; the next apply silently reverts to `generic`, see ../V-M-Pioneer-Trading_infrastructure/automation-service/variables.tf:46
+- **warning** (adopted: infrastructure/README.md): bootstrap scripts must `docker stop -t 9 <svc>` before `docker rm -f` (SIGKILL skips graceful shutdown), see ../V-M-Pioneer-Trading_infrastructure/automation-service/main.tf:338
 
 ## agent-service
 - **codebase** (adopted: agent-service/README.md): keep `GET /api/agent/health`; CloudFront routes only `/api/agent/v1/*` and this path, so it is the only public health path, see ../agent-service/src/auth.ts:24
@@ -64,7 +64,7 @@ Curated by tech-lead at the end of each team run, merged by a human. Max 80 line
 - **warning** (adopted: eslint-config/README.md): one eslint-config release does not lint identically across consumers: caret peers (typescript-eslint, react-hooks deps) resolve per lockfile, see ../eslint-config/package.json:47
 - **warning** (adopted: eslint-config/README.md): a `vite.config.ts` gets type info via the project service and must be in a tsconfig, else ESLint reports it not found; command-interface keeps `vite.config.js`, see ../eslint-config/index.js:137
 
-## ts-introspection-client
+## clerk-client
 - **codebase** (adopted: meta/docs/design/token-introspection.md): any center non-2xx is `unavailable` (503), including the center's 401 (about our secret); never relay it as 401, see ../ts-introspection-client/src/center.ts:197
 - **codebase** (adopted: meta/docs/design/token-introspection.md): scopes split on SPACE/TAB/CR/LF only (not `/\s+/`); an active answer may omit `scope`, read as "", see ../ts-introspection-client/src/center.ts:39
 - **codebase** (adopted: meta/docs/design/token-introspection.md): HEAD/OPTIONS are exempt from default-deny only; HEAD on a guarded route still needs its GET requirement, see ../ts-introspection-client/src/core.ts:18

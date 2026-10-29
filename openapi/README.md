@@ -34,3 +34,5 @@ The sync authenticates as an org-owned GitHub App installed on this repository
 only, with Contents and Pull requests write; its Client ID and private key are
 the org secrets `OPENAPI_SYNC_CLIENT_ID` and `OPENAPI_SYNC_PRIVATE_KEY`,
 granted to the three calling repositories only.
+
+Correction (2026-10-29): four repositories call the workflow, and the org secrets are granted to those four (agent-, auth-, fleet-, navigation-service; verified 2026-10-29: `gh api orgs/V-M-Pioneer-Trading/actions/secrets/OPENAPI_SYNC_CLIENT_ID/repositories`), see V-M-Pioneer-Trading/agent-service .github/workflows/container.yml:338, V-M-Pioneer-Trading/auth-service .github/workflows/container.yml:305, V-M-Pioneer-Trading/fleet-service .github/workflows/container.yml:230, V-M-Pioneer-Trading/navigation-service .github/workflows/container.yml:237.

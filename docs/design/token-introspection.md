@@ -398,7 +398,7 @@ producible by the center at all, so its fixture test must classify them as
 client-only when it re-vendors. A copy is allowed to lag the original;
 it is never allowed to lead it.
 
-*Dated 2026-10-29: auth-service's copy is re-vendored at version 7, meta commit `f226e5f`, see auth-service/contract/fixtures/SOURCE.txt:5-6.*
+*Dated 2026-10-29: auth-service's copy is re-vendored at version 7, meta commit `f226e5f`, see V-M-Pioneer-Trading/auth-service contract/fixtures/SOURCE.txt:5-6.*
 
 **`AUTH_INTROSPECTION_URL` is the full endpoint URL, `/auth/v1/introspect`
 included, and a client POSTs to it verbatim.** In production it is
@@ -446,7 +446,7 @@ takes a center that is already lying. It is still two answers where the
 contract promises one. Tracked, open, as
 [ts-introspection-client#6](https://github.com/V-M-Pioneer-Trading/ts-introspection-client/issues/6).
 
-*Dated 2026-10-29: closed. The TS client now refuses a repeated key as the other clients do (clerk-client#6 closed), see ts-introspection-client/src/strictJson.ts:110.*
+*Dated 2026-10-29: closed. The TS client now refuses a repeated key as the other clients do (clerk-client#6 closed), see V-M-Pioneer-Trading/clerk-client src/strictJson.ts:110.*
 
 **The suite stands up a stub center, and stops signing tokens.** That is the
 practical change for five repositories: no ephemeral keypair, no `jose` or
@@ -526,7 +526,8 @@ conditions every implementation must answer identically.
   Whether the built output is a committed `dist` or a `prepare` script is
   decided when the repository is created.
 
-*Dated 2026-10-29: the package (clerk-client) is consumed as a GitHub release tarball, not by git tag, see agent-service/package.json:24.*
+  *Dated 2026-10-29: the package (clerk-client) is consumed as a GitHub release tarball, not by git tag, see V-M-Pioneer-Trading/agent-service package.json:24.*
+
 - **Any numeric error code.** [upstream-errors.md](upstream-errors.md) excludes
   one on purpose and this follows it, for the same reason: it cannot be relayed
   as a field through agent-service's plain-text errors or navigation-service's

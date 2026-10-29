@@ -1,7 +1,7 @@
 {
   "enabled": true,
   "allow_paths": ["*"],
-  "deny_paths": [],
+  "deny_paths": ["fixtures/*"],
   "require_checks": true,
   "require_validation": true,
   "merge_method": "squash"
