@@ -75,4 +75,16 @@ Verified against cd0b1eb 2026-10-29.
 - Sync PRs may touch only their own spec (`openapi/README.md:27-31`)
 - `docs/design/token-introspection.md:3` says "decided, not shipped": stale vs `README.md:33` "shipped 2026-09-29"
 - `openapi/README.md:36` says org secrets granted to "three calling repositories"; four call the workflow (unverified: org secret settings need org admin)
-- `README.md:42,45` list agent-service and auth-service as Go; both moved to TypeScript (`docs/design/auth-design.md:1612`)
+- `README.md:42,45` list agent-service and auth-service as Go; both moved to TypeScript (`docs/design/auth-design.md:1619`)
+
+## Reference docs
+- `docs/algorithms.md` "The decision model on one page": read when changing scoring weights or predicting which target the planner picks.
+- `docs/algorithms.md` "The work loops": read when changing a mining, contract or scout task FSM.
+- `docs/algorithms.md` "Anomaly detection": read when an anomaly fires or an `alert` knob is tuned.
+- `docs/operations.md` "Production deployment": read when changing host networking, ports or Caddy routes in production.
+- `docs/operations.md` "Health-check routing": read when adding a service to health monitoring or a CloudFront path.
+- `docs/operations.md` "When auth-service is down": read when auth-service answers 503 or every lane goes background.
+- `docs/design/auth-design.md` decisions 7–8 (incl. the two state axes table): read when touching auth-service's poller, register path or universe-reset handling.
+- `docs/design/token-introspection.md` (situation table, "What is a bearer token, and what is not", "Minting a machine token"): read when writing or auditing a calling service's auth guard.
+- `docs/design/upstream-errors.md` "The rule": read when writing a client's st-gateway error mapping.
+- `docs/design/autopilot-spec.md` "Testing Decisions": read when writing st-gateway, automation-service or ai-service tests.

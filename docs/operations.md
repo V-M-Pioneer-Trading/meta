@@ -117,6 +117,8 @@ Each backend exposes its own Swagger UI:
 - agent-service: http://localhost:8080/swagger/index.html
 - fleet-service: http://localhost:3001/api/fleet/swagger
 
+*Note, 2026-10-29 — agent-service's Swagger UI is at http://localhost:8080/api/agent/swagger/ (the trailing slash matters; without it the path 404s), see agent-service/src/swagger.ts:2,12,24.*
+
 ## Production deployment
 
 Live at [spacetraders.radomskyi.com](https://spacetraders.radomskyi.com)
@@ -267,6 +269,8 @@ below.
   so even once ai-service is deployed, the anomaly → AI-supervisor pipeline
   described in ai-service's README stays dark until this is added too.
 
+*Note, 2026-10-29 — the bootstrap does wire it now: it reads the optional SSM SecureString `automation-service-anomaly-webhook-url` and passes `-e ANOMALY_WEBHOOK_URL` when set. Whether production has the parameter set is a host fact, unverified, see V-M-Pioneer-Trading_infrastructure/automation-service/main.tf:69,304,315-318,357.*
+
 ### Health-check routing
 
 Every backend exposes a bare, unauthenticated `GET /health` for local
@@ -290,12 +294,16 @@ fleet-service, automation-service, and st-gateway (`/api/st-gateway/health`
 — note st-gateway itself has no `/v1` pattern, since it isn't versioned the
 way the others are).
 
+*Note, 2026-10-29 — the panel's file is `src/api/healthService.ts`, not `.js`, see command-interface/src/api/healthService.ts:30.*
+
 ai-service is in `SERVICE_DEFINITIONS` but has no production URL to point at —
 it isn't deployed (see "Deployment gaps" above). `probeableServices` drops any
 service an HTTPS page cannot address, and ai-service's `http://localhost`
 default is one, so in production it is not listed at all rather than shown as
 down. `MONITORED_SERVICES` is the list after that filter. auth-service is not
 in `SERVICE_DEFINITIONS` yet.
+
+*Note, 2026-10-29 — auth-service is in `SERVICE_DEFINITIONS` now, polled at `/api/auth/health`, see command-interface/src/api/healthService.ts:45.*
 
 ### When auth-service is down
 

@@ -6,6 +6,7 @@ How to consume this repo's domain documentation when exploring the codebase.
 
 - **`GLOSSARY-MAP.md`** at this repo's root (meta/GLOSSARY-MAP.md from the workspace; `../meta/GLOSSARY-MAP.md` from a sibling repo): every repo's glossary and how the contexts relate. Then **`GLOSSARY.md`** at this repo's root, the workspace glossary; read each other glossary the map names that is relevant to the topic.
 - **docs/adr/**: ADRs that touch the area you're about to work in; multi-context repos also `src/<context>/docs/adr/`.
+- Workspace ADRs live in meta `docs/adr/` (`../meta/docs/adr/` from a sibling repo): read them before changing a service boundary or how a calling service answers st-gateway failures.
 - Workspace: each repo is one context; the tickets repo holds `GLOSSARY-MAP.md` (every repo's glossary and how the contexts relate) and workspace-wide ADRs.
 
 ## ADRs elsewhere

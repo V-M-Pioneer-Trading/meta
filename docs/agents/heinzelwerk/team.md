@@ -18,7 +18,7 @@ How heinzelwerk agents work in this repo. Mode rules (single repo vs workspace) 
   - `.github/workflows/validate.yml` step "Restrict openapi-sync pull requests to their own spec" and `scripts/validate-openapi.mjs`: the only gate before a sync PR merges itself (`.github/workflows/validate.yml:63-64`); `SERVICES` allow-list (`scripts/validate-openapi.mjs:27`)
   - `dev-keys/**`: private key committed on purpose, never trusted by prod; no "auth off" path ever (`dev-keys/README.md:3-4,17-18`, `.env.example:14`)
   - `docker-compose.yml` / `.env.example` secrets: `AUTH_SERVICE_SHARED_SECRET`, `AUTH_INTROSPECTION_SECRET`, `M2M_CALLER_SECRET_*` must stay pairwise distinct, defaults included, or auth-service refuses to start (`.env.example:33-36,44`, `docker-compose.yml:20,28,225,250`)
-  - `docs/design/auth-design.md` "## Decisions": the authz contract every service implements (`docs/design/auth-design.md:175`)
+  - `docs/design/auth-design.md` "## Decisions": the authz contract every service implements (`docs/design/auth-design.md:177`)
 - **Contracts** (see team-modes **Contract changes**; validator checks every diff touching these):
   - Provided: `fixtures/introspection.json` v7 (`fixtures/introspection.json:3`) · consumers auth-service, navigation-service, st-gateway, clerk-client (vendored), agent-, fleet-, automation-service, st-gateway (via clerk-client 2.0.1 tarball)
   - Provided: `fixtures/gateway-errors.json` v1 (`fixtures/gateway-errors.json:3`) · consumers agent-service, fleet-service, navigation-service
