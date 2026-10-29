@@ -16,7 +16,7 @@ Curated by tech-lead at the end of each team run, merged by a human. Max 80 line
 - **warning** (adopted: V-M-Pioneer-Trading_infrastructure/README.md): bootstrap scripts must `docker stop -t 9 <svc>` before `docker rm -f` (SIGKILL skips graceful shutdown), see ../V-M-Pioneer-Trading_infrastructure/automation-service/main.tf:338
 
 ## agent-service
-- **codebase** (adopted: agent-service/README.md): keep `GET /api/agent/health`; CloudFront routes only `/api/agent/v1/*` and this path, so it is the only public health path, see ../agent-service/src/auth.ts:23
+- **codebase** (adopted: agent-service/README.md): keep `GET /api/agent/health`; CloudFront routes only `/api/agent/v1/*` and this path, so it is the only public health path, see ../agent-service/src/auth.ts:24
 - **discovery** (adopted: agent-service/README.md): table `contracts` is insert-only; no query reads it, see ../agent-service/src/db/history.ts:85
 - **codebase** (adopted: agent-service/README.md): `GET /current-agent` makes three serial gateway calls (shared rate budget); worst case 3x the 30 s timeout, see ../agent-service/src/controllers/agent.controller.ts:30
 - **warning** (adopted: agent-service/README.md): an upstream 401 (st-gateway's injected credential rejected) is relayed like an invalid session; only the text/plain body differs, see ../agent-service/src/gateway/errors.ts:145

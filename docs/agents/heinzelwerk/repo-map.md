@@ -62,9 +62,9 @@ Verified against cd0b1eb 2026-10-29.
 
 ## Docs
 - `docs/algorithms.md`: decision model `:27`, work loops `:186`, anomaly `:264`, shadow/replay `:292`, AI supervisor `:321`, gateway `:365`
-- `docs/operations.md`: running locally `:6`, production `:120`, CI and deploys `:328`, testing `:365`, tuning `:379`
-- `docs/architecture.md`: services `:82`, boundaries `:98`, key design decisions `:125` (unnumbered)
-- ADRs: `docs/design/auth-design.md` "## Decisions" `:175`, 1–23; `docs/design/autopilot-design.md` "## Decisions" `:39`, 1–13
+- `docs/operations.md`: running locally `:6`, production `:122`, CI and deploys `:336`, testing `:373`, tuning `:387`
+- `docs/architecture.md`: services `:82`, boundaries `:100`, key design decisions `:127` (unnumbered)
+- ADRs: `docs/design/auth-design.md` "## Decisions" `:177`, 1–23; `docs/design/autopilot-design.md` "## Decisions" `:41`, 1–13
 - `docs/design/token-introspection.md`: implements auth-design decision 21 (supersedes 4), meta#80 (`docs/design/token-introspection.md:9-11`)
 - `docs/design/upstream-errors.md`: what services answer when st-gateway doesn't (`docs/design/upstream-errors.md:1-4`)
 

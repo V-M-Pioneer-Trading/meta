@@ -93,7 +93,7 @@ token (see [below](#exactly-one-service-stores-the-game-token)).
 | [command-interface](https://github.com/V-M-Pioneer-Trading/command-interface) | React / Vite | LCARS-themed operator dashboard: fleet map, mining controls, autopilot switch, observability panels |
 | [spacetraders-mcp-server](https://github.com/V-M-Pioneer-Trading/spacetraders-mcp-server) | Node/TypeScript | MCP server exposing the same inspection/knob/replan surface to interactive clients (Claude, IDEs) |
 
-Correction (2026-10-29): agent-service is TypeScript / MySQL and auth-service is TypeScript / SQLite, not Go, see agent-service/package.json:6,40, auth-service/package.json:6,38
+Correction (2026-10-29): agent-service is TypeScript / MySQL and auth-service is TypeScript / SQLite, not Go, see agent-service/package.json:6,26,40, auth-service/package.json:6,38
 
 Each repo's README covers its own API and development setup in detail.
 

@@ -7,7 +7,7 @@ How heinzelwerk agents work in this repo. Mode rules (single repo vs workspace) 
 - **Checks** (validator runs every one, in order; copied from CI, quiet flags only):
   - `node scripts/validate-fixtures.mjs`
   - `actionlint` (local equivalent of the CI step, which downloads actionlint 1.7.12 into `$RUNNER_TEMP` and checks its sha256)
-  - "Restrict openapi-sync pull requests to their own spec" `(CI only: runs on openapi-sync/* pull requests)`
+  - "Restrict openapi-sync pull requests to their own spec" `(CI only: runs on openapi-sync/* pull requests or PRs by vmpt-openapi-sync[bot], .github/workflows/validate.yml:73)`
   - `node scripts/validate-openapi.mjs`
 - **Verified against**: cd0b1eb 2026-10-29 (checks and every ref in this file; retro bumps it)
 - **Coding standards**: none: smell baseline only. Repo rules from config: scripts are zero-dependency plain node, no `package.json` (`.github/workflows/validate.yml:31-33`); third-party actions pinned to a full SHA with a version comment (`.github/workflows/validate.yml:20-25`); LF everywhere (`.gitattributes:1`)

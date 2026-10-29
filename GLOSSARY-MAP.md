@@ -7,7 +7,7 @@ One context per repo. The workspace glossary is `GLOSSARY.md` here in meta; no r
 | Context (dir) | Owns | Glossary |
 |---|---|---|
 | meta | docs, fixtures, OpenAPI specs, local compose (`README.md:3-7`) | `GLOSSARY.md` (workspace-wide) |
-| auth-service | the vault (game + account tokens) and the center (token verification, M2M minting) (`GLOSSARY.md:43-46`, `../auth-service/src/config.ts:33-34`) | none yet, created lazily |
+| auth-service | the vault (game + account tokens) and the center (token verification, M2M minting) (`GLOSSARY.md:74-77`, `../auth-service/src/config.ts:33-34`) | none yet, created lazily |
 | st-gateway | rate budget, game-token injection, lanes (`../st-gateway/src/server.ts:239-240`) | none yet, created lazily |
 | agent-service | agent, ships, contracts, trade/delivery history (`../agent-service/src/auth.ts:22-44`) | none yet, created lazily |
 | fleet-service | ship actions (`../fleet-service/src/auth.ts:15`) | none yet, created lazily |
