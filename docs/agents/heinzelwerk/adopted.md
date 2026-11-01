@@ -13,3 +13,5 @@ Ledger of docs whose content was adopted into the agent structure. `<hash>` is `
 - docs/design/token-introspection.md @ f2d8242a631ad9e8cf38df43d10cac1b0a87dd3c: stale, gotcha, term, reference, covered → repo-map.md#Reference docs, meta learnings.md, meta GLOSSARY.md; stale: 3 corrected, 0 marked, 0 ignored
 - docs/design/upstream-errors.md @ 78ecd15d3dc591c5ffc830e4b7200de2bfd44b22: gotcha, decision, term, reference → repo-map.md#Reference docs, meta learnings.md, meta GLOSSARY.md, meta docs/adr/0002-relay-gateway-answers.md; stale: 0 corrected, 0 marked, 0 ignored
 - openapi/README.md @ bd8d26f625e7d212078ad5d00e3b5631f823d34b: stale, covered → dropped (covered, repo-map.md#Traps, repo-map.md#openapi-sync.yml); stale: 1 corrected, 0 marked, 0 ignored
+- CLAUDE.md @ 4a3dc2827ccf3eb8d393c920c29d67654efe8903: stale only (outside the heinzelwerk block) → none: the file holds only the heinzelwerk block; stale: 0 corrected, 0 marked, 0 ignored
+- CLAUDE.workspace.md @ 395f06e4c013882e46653cb9d01c9658b26f2bf1: stale only (outside the heinzelwerk block) → none: the file holds only the heinzelwerk block; stale: 0 corrected, 0 marked, 0 ignored
