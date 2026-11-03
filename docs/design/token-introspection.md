@@ -392,9 +392,9 @@ case-insensitive; it
 changes no existing case and removes none. auth-service's own
 vendored copy pins **version 7**, at meta commit `f226e5f`, and was first re-vendored
 at **step 11** of [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80).
-Version 3's and version 5's bodies are not
-producible by the center at all, so its fixture test must classify them as
-client-only when it re-vendors. A copy is allowed to lag the original;
+Version 3's, 5's, 6's and 7's bodies are not
+producible by the center at all, so its fixture test classifies them instead
+of replaying them: it checks the center's real answer in their place, or skips a client-only case. A copy is allowed to lag the original;
 it is never allowed to lead it.
 
 **`AUTH_INTROSPECTION_URL` is the full endpoint URL, `/auth/v1/introspect`
@@ -434,7 +434,7 @@ this is the reading to take. The fixture's wording — and its `$comment`'s
 the file's sha256, and a corrected sentence would cost a re-vendor in every
 repository to say nothing new.
 
-*Dated 2026-09-29 — a divergence fixture version 5 now pins.* When the
+*Dated 2026-09-29 — a divergence fixture version 5 (2026-09-30) pins.* When the
 center's answer repeated a JSON key, the TS client took the last value, as
 `JSON.parse` does, where the Go and Java clients refused the body as malformed
 and answered `503`. It was not a bypass: only the center writes that body, over
@@ -520,8 +520,8 @@ conditions every implementation must answer identically.
   release tarball by fleet-service, automation-service, st-gateway,
   agent-service and ai-service (still on the pre-rename introspection-client 1.2.0), because GitHub Packages
   demands a token even for public packages and that breaks the Docker builds.
-  Whether the built output is a committed `dist` or a `prepare` script is
-  decided when the repository is created.
+  The built output is never committed: `dist/` is ignored, and `prepack`
+  builds it into the tarball.
 - **Any numeric error code.** [upstream-errors.md](upstream-errors.md) excludes
   one on purpose and this follows it, for the same reason: it cannot be relayed
   as a field through agent-service's plain-text errors or navigation-service's

@@ -1304,8 +1304,8 @@ languages cannot be held to a prose specification.
   tarball** by fleet-service, automation-service, st-gateway, agent-service and ai-service (still on the pre-rename introspection-client 1.2.0).
   No registry: GitHub
   Packages demands a token even for public packages, which breaks the Docker
-  builds. How built output ships — a committed `dist` or a `prepare` script —
-  is decided when the repository is created, not here.
+  builds. Built output is never committed: `dist/` is ignored, and `prepack`
+  builds it into the tarball.
 - **One Java implementation** (navigation-service). One consumer and nothing
   to share; a package would be ceremony.
 - **[`fixtures/introspection.json`](../../fixtures/introspection.json) binds
