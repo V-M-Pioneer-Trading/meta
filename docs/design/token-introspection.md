@@ -392,9 +392,9 @@ case-insensitive; it
 changes no existing case and removes none. auth-service's own
 vendored copy pins **version 7**, at meta commit `f226e5f`, and was first re-vendored
 at **step 11** of [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80).
-Version 3's, 5's, 6's and 7's bodies are not
-producible by the center at all, so its fixture test classifies them instead
-of replaying them: it checks the center's real answer in their place, or skips a client-only case. A copy is allowed to lag the original;
+Version 3's, 5's and 7's bodies, and version 6's key-case bodies, are not
+producible by the center at all, so its fixture test checks the center's real
+answer in their place or skips them as client-only. A copy is allowed to lag the original;
 it is never allowed to lead it.
 
 **`AUTH_INTROSPECTION_URL` is the full endpoint URL, `/auth/v1/introspect`
