@@ -15,7 +15,7 @@ decisions; this file only fixes vocabulary.
 - **Visitor** — anyone with no session. May read what a backend serves
   anonymously; may not cause a live upstream call except where a backend
   explicitly allows it.
-- **Scope** — a permission literal in the session token. Five exist:
+- **Scope** — a permission literal in a caller's token: an operator's comes with their Clerk session, a machine's is the fixed set auth-service mints for it (`../auth-service/src/config.ts:33-34`). Five exist:
   - `fleet:control` — driving the fleet. Reversible, but moves credits and
     ships.
   - `agent:reset` — **Reset Agent** / **Restore Token**. Irreversible and

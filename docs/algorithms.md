@@ -375,9 +375,9 @@ Classification is derived from a **verified identity**, never declared
 is forwarded verbatim by agent/navigation/fleet-service, and st-gateway asks
 auth-service what it carries: a token the center answers for as an active
 `operator` earns the interactive lane; a machine token (automation-service's
-M2M), no token, a token the center does not vouch for, or a center that is
-down all land in `background`. There
-is no `X-Priority` header any more — an earlier design let callers declare
+M2M), no token (the center is not even asked), a token the center does not
+vouch for, or a center that is down all land in `background`. There is no
+`X-Priority` header any more — an earlier design let callers declare
 their class, which meant anything could promote itself by sending a string.
 
 The one way to break this silently is a backend that verifies the session and

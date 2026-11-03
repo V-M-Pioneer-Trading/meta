@@ -3,7 +3,7 @@ Verified against cd0b1eb 2026-10-29.
 
 ## Purpose
 - Project-wide docs, local-dev compose and cross-cutting issues for the SpaceTraders autopilot fleet; tickets repo of the workspace (`README.md:3-7`)
-- No service code, no `package.json`; scripts are zero-dependency node (`.github/workflows/validate.yml:31-33`)
+- No service code, no root `package.json` (the only one is the converter's, `tools/swagger2openapi/package.json`); scripts are zero-dependency node (`.github/workflows/validate.yml:31-33`)
 
 ## Layout
 - `fixtures/`: conformance fixtures other repos vendor (`fixtures/introspection.json`, `fixtures/gateway-errors.json`)
