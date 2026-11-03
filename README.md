@@ -39,16 +39,14 @@ Start with [the decision model on one page](docs/algorithms.md#the-decision-mode
 | Repo | Language | Owns |
 |------|----------|------|
 | [navigation-service](https://github.com/V-M-Pioneer-Trading/navigation-service) | Java / Spring Boot | Waypoints, systems, market, shipyard (read + cache) |
-| [agent-service](https://github.com/V-M-Pioneer-Trading/agent-service) | Go | Agent profile, ships, contracts, delivery history |
+| [agent-service](https://github.com/V-M-Pioneer-Trading/agent-service) | Node/TS | Agent profile, ships, contracts, delivery history |
 | [fleet-service](https://github.com/V-M-Pioneer-Trading/fleet-service) | Node/TS | Ship actions (orbit, dock, navigate, extract, refuel, deliver, …) |
 | [st-gateway](https://github.com/V-M-Pioneer-Trading/st-gateway) | Node/TS | Global SpaceTraders rate budget, priority queueing, retries |
-| [auth-service](https://github.com/V-M-Pioneer-Trading/auth-service) | Go | The SpaceTraders account and agent tokens; reset detection and re-registration |
+| [auth-service](https://github.com/V-M-Pioneer-Trading/auth-service) | Node/TS | The SpaceTraders account and agent tokens; reset detection and re-registration |
 | [automation-service](https://github.com/V-M-Pioneer-Trading/automation-service) | Node/TS | Deterministic autopilot engine: planner, FSMs, anomalies, event log |
 | [ai-service](https://github.com/V-M-Pioneer-Trading/ai-service) | Node/TS | AI supervisor: bounded knob tuning + replan triggers |
 | [command-interface](https://github.com/V-M-Pioneer-Trading/command-interface) | React | LCARS-themed operator dashboard |
 | [spacetraders-mcp-server](https://github.com/V-M-Pioneer-Trading/spacetraders-mcp-server) | Node/TS | MCP tools for interactive operators (Claude, IDEs) |
-
-Correction (2026-10-29): agent-service and auth-service are TypeScript, not Go as the table says; both build with `tsc`, see V-M-Pioneer-Trading/agent-service package.json:12, V-M-Pioneer-Trading/auth-service package.json:12.
 
 ## Quickstart
 

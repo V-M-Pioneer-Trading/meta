@@ -390,15 +390,12 @@ and one gateway case that pin the safe-method rule in both directions, exact
 scope matching, what is and is not a bearer token, and which comparisons are
 case-insensitive; it
 changes no existing case and removes none. auth-service's own
-vendored copy pins **version 1**, at meta commit `358231f`, and is re-vendored
-at **step 11** of [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80);
-it stays valid in the meantime because versions 2, 3, 4 and 5 only add cases a
-*client* answers, and auth-service is the center. Version 3's and version 5's bodies are not
+vendored copy pins **version 7**, at meta commit `f226e5f`, and was first re-vendored
+at **step 11** of [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80).
+Version 3's and version 5's bodies are not
 producible by the center at all, so its fixture test must classify them as
 client-only when it re-vendors. A copy is allowed to lag the original;
 it is never allowed to lead it.
-
-*Dated 2026-10-29: auth-service's copy is re-vendored at version 7, meta commit `f226e5f`, see V-M-Pioneer-Trading/auth-service contract/fixtures/SOURCE.txt:5-6.*
 
 **`AUTH_INTROSPECTION_URL` is the full endpoint URL, `/auth/v1/introspect`
 included, and a client POSTs to it verbatim.** In production it is
@@ -437,16 +434,15 @@ this is the reading to take. The fixture's wording — and its `$comment`'s
 the file's sha256, and a corrected sentence would cost a re-vendor in every
 repository to say nothing new.
 
-*Dated 2026-09-29 — an open divergence the fixture does not pin.* When the
-center's answer repeats a JSON key, the TS client takes the last value, as
-`JSON.parse` does, where the Go and Java clients refuse the body as malformed
-and answer `503`. It is not a bypass: only the center writes that body, over
+*Dated 2026-09-29 — a divergence fixture version 5 now pins.* When the
+center's answer repeated a JSON key, the TS client took the last value, as
+`JSON.parse` does, where the Go and Java clients refused the body as malformed
+and answered `503`. It was not a bypass: only the center writes that body, over
 loopback or `authnet`, and it never repeats a key, so reaching the difference
-takes a center that is already lying. It is still two answers where the
-contract promises one. Tracked, open, as
-[ts-introspection-client#6](https://github.com/V-M-Pioneer-Trading/ts-introspection-client/issues/6).
-
-*Dated 2026-10-29: closed. The TS client now refuses a repeated key as the other clients do (clerk-client#6 closed), see V-M-Pioneer-Trading/clerk-client src/strictJson.ts:110.*
+took a center that was already lying. It was still two answers where the
+contract promises one. Closed as
+[ts-introspection-client#6](https://github.com/V-M-Pioneer-Trading/ts-introspection-client/issues/6):
+the TS client now refuses a repeated key, as the Java client does.
 
 **The suite stands up a stub center, and stops signing tokens.** That is the
 practical change for five repositories: no ephemeral keypair, no `jose` or
@@ -520,14 +516,12 @@ conditions every implementation must answer identically.
   servlet filter are not going to be the same thing, and nothing is gained by
   pretending. What is fixed is the answer, the request to the center and the
   call count — everything the fixture can observe from outside.
-- **How the TS package ships its build.** One package, consumed by git tag by
-  fleet-service, automation-service and st-gateway, because GitHub Packages
+- **How the TS package ships its build.** One package, consumed as a GitHub
+  release tarball by fleet-service, automation-service, st-gateway and
+  agent-service, because GitHub Packages
   demands a token even for public packages and that breaks the Docker builds.
   Whether the built output is a committed `dist` or a `prepare` script is
   decided when the repository is created.
-
-  *Dated 2026-10-29: the package (clerk-client) is consumed as a GitHub release tarball, not by git tag, see V-M-Pioneer-Trading/agent-service package.json:24.*
-
 - **Any numeric error code.** [upstream-errors.md](upstream-errors.md) excludes
   one on purpose and this follows it, for the same reason: it cannot be relayed
   as a field through agent-service's plain-text errors or navigation-service's

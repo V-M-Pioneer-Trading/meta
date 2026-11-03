@@ -9,3 +9,4 @@
 - **Workspace**: read `docs/agents/heinzelwerk/workspace.md` before any cross-repo task.
 - **Repo map**: see `docs/agents/heinzelwerk/repo-map.md` when locating code.
 - **Learnings**: read `docs/agents/heinzelwerk/learnings.md` before starting any task.
+- **Sibling paths** (workspace mode only): `../<repo>/…` above is relative to this repo's main checkout, i.e. the workspace folder. From a task worktree (`.claude/worktrees/<x>`), resolve it as `$(cd "$(git rev-parse --git-common-dir)/../.." && pwd)/<repo>/…`.

@@ -2,7 +2,8 @@
 
 *Outcome of a design interview, 2026-08-19. Status: increment 1 shipped 2026-08-21,
 increment 2 shipped 2026-08-22 (see [Increment 1 — shipped](#increment-1--shipped)
-and [Increment 2 — shipped](#increment-2--shipped) below); increments 3–4 pending.
+and [Increment 2 — shipped](#increment-2--shipped) below); increment 3 shipped
+2026-09-05 and increment 4 is done (see [Build order](#build-order)).
 [Decision 21](#21-one-verifier-every-service-asks-auth-service-what-a-token-carries),
 added 2026-09-20, reverses decision 4 and shipped 2026-09-29 through
 [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80).
@@ -11,10 +12,8 @@ added 2026-09-20, reverses decision 4 and shipped 2026-09-29 through
 [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59).
 [Decision 23](#23-agent-service-and-auth-service-move-from-go-to-typescript),
 added 2026-10-03, moves agent-service and auth-service from Go to TypeScript;
-not shipped, see
+shipped 2026-10-05, see
 [meta#103](https://github.com/V-M-Pioneer-Trading/meta/issues/103).*
-
-*Dated 2026-10-29: nothing is pending under "increments 3–4": increment 3 shipped 2026-09-05 and build step 4 is done (see [Build order](#build-order)). Decision 23 has shipped too: agent-service and auth-service are TypeScript, with no Go left in either (meta#103 items 5 and 8 checked 2026-10-04 / 2026-10-05; the issue stays open only for follow-ups), see V-M-Pioneer-Trading/auth-service src/jwt/verify.ts:34, V-M-Pioneer-Trading/auth-service src/db/database.ts:8.*
 
 This document covers **two independent applications** that adopt the same vendor
 for different reasons: this project (`spacetraders`) and `mradomsky/stagehopper`.
@@ -1301,20 +1300,18 @@ languages cannot be held to a prose specification.
 
 #### Where the client code lives
 
-- **One TS package** in its own repository, consumed **by git tag** by
-  fleet-service, automation-service and st-gateway. No registry: GitHub
+- **One TS package** in its own repository, consumed **as a GitHub release
+  tarball** by fleet-service, automation-service, st-gateway and agent-service.
+  No registry: GitHub
   Packages demands a token even for public packages, which breaks the Docker
   builds. How built output ships — a committed `dist` or a `prepare` script —
   is decided when the repository is created, not here.
-- **One Go implementation** (agent-service) and **one Java implementation**
-  (navigation-service). Two consumers between them and nothing to share; a
-  package each would be ceremony.
+- **One Java implementation** (navigation-service). One consumer and nothing
+  to share; a package would be ceremony.
 - **[`fixtures/introspection.json`](../../fixtures/introspection.json) binds
-  all three.** Service suites stop signing tokens and stand up a stub center
+  both.** Service suites stop signing tokens and stand up a stub center
   instead. Ephemeral keypairs remain only in auth-service's own tests, which is
   the only place a real signature is still checked.
-
-*Dated 2026-10-29: the TS package (clerk-client) is consumed as a GitHub release tarball, not by git tag, and agent-service is one of its consumers: there is no Go client, see V-M-Pioneer-Trading/agent-service package.json:24.*
 
 #### Infrastructure posture
 
@@ -1400,11 +1397,9 @@ most. Rollback is redeploying the previous image tag.
 - **`clerk-sdk-go` inside the center.** Its issuer check is satisfiable (the
   dev minter can emit a Clerk-shaped `iss`), so decision 10 is not the
   obstacle. The unknown is whether `jwt.Verify` accepts the M2M JWT that drives
-  the autopilot, which only a live token can answer. The swap is local to one
-  file; revisit with a live test.
-
-  *Dated 2026-10-29: moot. The center is TypeScript and verifies with `jose`; there is no Go verifier left to swap, see V-M-Pioneer-Trading/auth-service src/jwt/verify.ts:70.*
-
+  the autopilot, which only a live token can answer. Moot since
+  [decision 23](#23-agent-service-and-auth-service-move-from-go-to-typescript):
+  the center verifies with `jose`, and there is no Go verifier left to swap.
 - **Checking `azp`.** Not required by any JWT specification; it is an OIDC
   claim that Clerk's manual-verification guide lists as a step. Its purpose is
   CSRF protection when the token travels in a **cookie**. Here it travels only
@@ -1618,12 +1613,10 @@ is proven live.
 
 ### 23. agent-service and auth-service move from Go to TypeScript
 
-*Status: **decided 2026-10-03; not shipped.** Both services are Go today,
-exactly as the rest of this document describes them. The rollout is
+*Status: **decided 2026-10-03; shipped 2026-10-05.** Both services are
+TypeScript today, with no Go left in either. The rollout is
 [meta#103](https://github.com/V-M-Pioneer-Trading/meta/issues/103); check its
 checkboxes before believing any sentence below describes what runs.*
-
-*Dated 2026-10-29: shipped. Both services are TypeScript and no `.go` file is left in either (meta#103 items 5 and 8 checked 2026-10-04 / 2026-10-05; the issue stays open only for follow-ups), see V-M-Pioneer-Trading/auth-service src/jwt/verify.ts:34, V-M-Pioneer-Trading/auth-service src/db/database.ts:8.*
 
 **agent-service and auth-service are rewritten in TypeScript, in place, one
 after the other, with strict 1:1 behaviour.** Every other backend that is not
@@ -1903,7 +1896,7 @@ fixed.
    [autopilot-spec.md](autopilot-spec.md)'s account/agent token confusion is
    corrected in place, with a dated note saying what was changed rather than a
    silent rewrite of a frozen record.
-5. **Central introspection.** ⬜ **Not started** — decided 2026-09-20, tracked
+5. **Central introspection.** ✅ Shipped 2026-09-29 — decided 2026-09-20, tracked
    as [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80), which
    holds the eleven ordered steps and is the only place to read what has
    actually landed. auth-service gains `POST /auth/v1/introspect`; every other
@@ -1919,8 +1912,6 @@ fixed.
    fleet-service forwards the caller's bearer on the call that reaches it, or
    contract delivery recording breaks. Infrastructure applies before every
    deploy, never after.
-
-*Dated 2026-10-29: step 5 is done, not "not started": meta#80 is closed and central introspection shipped 2026-09-29 (see decision 21's note of that date), see V-M-Pioneer-Trading/st-gateway src/server.ts:189-195, V-M-Pioneer-Trading/auth-service src/server.ts:197.*
 
 **stagehopper is an independent stream** — separate tenant, separate repository,
 no shared code — and can land at any point.

@@ -114,10 +114,8 @@ it is safe, and how to narrow the scopes it carries.
 Each backend exposes its own Swagger UI:
 
 - navigation-service: http://localhost:8081/swagger-ui.html
-- agent-service: http://localhost:8080/swagger/index.html
+- agent-service: http://localhost:8080/api/agent/swagger/ (the trailing slash matters; without it the path 404s)
 - fleet-service: http://localhost:3001/api/fleet/swagger
-
-*Note, 2026-10-29 — agent-service's Swagger UI is at http://localhost:8080/api/agent/swagger/ (the trailing slash matters; without it the path 404s), see V-M-Pioneer-Trading/agent-service src/swagger.ts:24,64,94.*
 
 ## Production deployment
 
@@ -265,11 +263,11 @@ below.
   it via `config.anomalyWebhookUrl` (`automation-service/src/config.ts`,
   defaults to `null`) and only delivers anomaly webhooks
   (`WebhookDelivery`, `automation-service/src/server.ts`) when it's set.
-  Nothing sets it in `automation-service/main.tf`'s bootstrap script today,
-  so even once ai-service is deployed, the anomaly → AI-supervisor pipeline
-  described in ai-service's README stays dark until this is added too.
-
-*Note, 2026-10-29 — the bootstrap does wire it now: it reads the optional SSM SecureString `automation-service-anomaly-webhook-url` and passes `-e ANOMALY_WEBHOOK_URL` when set. Whether production has the parameter set is a host fact, not checked on the host, see V-M-Pioneer-Trading/infrastructure automation-service/main.tf:69,304,315-318,357.*
+  `automation-service/main.tf`'s bootstrap script reads the optional SSM
+  SecureString `automation-service-anomaly-webhook-url` and passes
+  `-e ANOMALY_WEBHOOK_URL` only when it is set, so even once ai-service is
+  deployed, the anomaly → AI-supervisor pipeline described in ai-service's
+  README stays dark until that parameter holds its URL.
 
 ### Health-check routing
 
@@ -283,7 +281,7 @@ the same origin-relative URL) or hit no configured pattern at all and fall
 through to the SPA's `index.html` — a false-positive 200 that looks like a
 passing health check regardless of whether the backend is actually up.
 
-command-interface's `SystemStatus` panel (`src/api/healthService.js`) polls
+command-interface's `SystemStatus` panel (`src/api/healthService.ts`) polls
 `/api/<service>/health` directly from the browser, once per monitored
 service, unauthenticated, before and after login — see `SERVICE_DEFINITIONS`
 for the exact path per service. CloudFront
@@ -294,16 +292,12 @@ fleet-service, automation-service, and st-gateway (`/api/st-gateway/health`
 — note st-gateway itself has no `/v1` pattern, since it isn't versioned the
 way the others are).
 
-*Note, 2026-10-29 — the panel's file is `src/api/healthService.ts`, not `.js`, see V-M-Pioneer-Trading/command-interface src/api/healthService.ts:30.*
-
 ai-service is in `SERVICE_DEFINITIONS` but has no production URL to point at —
 it isn't deployed (see "Deployment gaps" above). `probeableServices` drops any
 service an HTTPS page cannot address, and ai-service's `http://localhost`
 default is one, so in production it is not listed at all rather than shown as
-down. `MONITORED_SERVICES` is the list after that filter. auth-service is not
-in `SERVICE_DEFINITIONS` yet.
-
-*Note, 2026-10-29 — auth-service is in `SERVICE_DEFINITIONS` now, polled at `/api/auth/health`, see V-M-Pioneer-Trading/command-interface src/api/healthService.ts:45.*
+down. `MONITORED_SERVICES` is the list after that filter. auth-service is in
+`SERVICE_DEFINITIONS`, polled at `/api/auth/health`.
 
 ### When auth-service is down
 

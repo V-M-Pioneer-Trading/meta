@@ -84,16 +84,14 @@ token (see [below](#exactly-one-service-stores-the-game-token)).
 | Service | Stack | Role |
 |---|---|---|
 | [navigation-service](https://github.com/V-M-Pioneer-Trading/navigation-service) | Java 21 / Spring Boot / SQLite | Read-and-cache layer for universe data: waypoints, systems, market prices, shipyards |
-| [agent-service](https://github.com/V-M-Pioneer-Trading/agent-service) | Go / MySQL | Agent profile, ship list, contracts (read + accept/fulfill), contract delivery history, ship/cargo purchases and cargo sells, transaction history |
+| [agent-service](https://github.com/V-M-Pioneer-Trading/agent-service) | Node/TypeScript / MySQL | Agent profile, ship list, contracts (read + accept/fulfill), contract delivery history, ship/cargo purchases and cargo sells, transaction history |
 | [fleet-service](https://github.com/V-M-Pioneer-Trading/fleet-service) | Node/TypeScript | All ship *actions*: orbit, dock, navigate, extract, survey, refuel, deliver. Stateless |
 | [st-gateway](https://github.com/V-M-Pioneer-Trading/st-gateway) | Node/TypeScript | The only door to the SpaceTraders API: one global rate budget, priority queueing, centralized retries |
-| [auth-service](https://github.com/V-M-Pioneer-Trading/auth-service) | Go / SQLite | The only holder of the SpaceTraders account and agent tokens: hands the agent token to st-gateway, detects universe resets and re-registers. Also the only verifier of Clerk tokens: every other backend asks it, over `POST /auth/v1/introspect`, what a token carries |
+| [auth-service](https://github.com/V-M-Pioneer-Trading/auth-service) | Node/TypeScript / SQLite | The only holder of the SpaceTraders account and agent tokens: hands the agent token to st-gateway, detects universe resets and re-registers. Also the only verifier of Clerk tokens: every other backend asks it, over `POST /auth/v1/introspect`, what a token carries |
 | [automation-service](https://github.com/V-M-Pioneer-Trading/automation-service) | Node/TypeScript / Postgres | The deterministic autopilot engine: planner, per-ship state machines, anomaly checks, event log |
 | [ai-service](https://github.com/V-M-Pioneer-Trading/ai-service) | Node/TypeScript | The AI supervisor: receives anomalies, runs a bounded OpenAI tool loop that may tune knobs or trigger replans |
 | [command-interface](https://github.com/V-M-Pioneer-Trading/command-interface) | React / Vite | LCARS-themed operator dashboard: fleet map, mining controls, autopilot switch, observability panels |
 | [spacetraders-mcp-server](https://github.com/V-M-Pioneer-Trading/spacetraders-mcp-server) | Node/TypeScript | MCP server exposing the same inspection/knob/replan surface to interactive clients (Claude, IDEs) |
-
-Correction (2026-10-29): agent-service is TypeScript / MySQL and auth-service is TypeScript / SQLite, not Go, see V-M-Pioneer-Trading/agent-service package.json:12,26, V-M-Pioneer-Trading/auth-service package.json:12, V-M-Pioneer-Trading/auth-service src/db/database.ts:8
 
 Each repo's README covers its own API and development setup in detail.
 
