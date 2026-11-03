@@ -1301,7 +1301,7 @@ languages cannot be held to a prose specification.
 #### Where the client code lives
 
 - **One TS package** in its own repository, consumed **as a GitHub release
-  tarball** by fleet-service, automation-service, st-gateway and agent-service.
+  tarball** by fleet-service, automation-service, st-gateway, agent-service and ai-service (still on the pre-rename introspection-client 1.2.0).
   No registry: GitHub
   Packages demands a token even for public packages, which breaks the Docker
   builds. How built output ships — a committed `dist` or a `prepare` script —

@@ -4,10 +4,10 @@ How heinzelwerk agents work in this repo. Mode rules (single repo vs workspace) 
 
 - **Autonomy**: full. Agents merge and apply on their own; breakages are learnings. Secrets are never published (name the variable, never the value); the gate never merges its own policy.
 - **Shared paths** (only the owner named in the task edits them): `fixtures/` (conformance fixtures other repos vendor with sha pins), `openapi/` (specs the backends sync in), `.github/workflows/openapi-sync.yml` (called `@main` by four backends)
-- **Checks** (validator runs every one, in order; copied from CI, quiet flags only):
+- **Checks** (validator runs every one, in order; copied from CI, quiet flags only; a status note goes after the closing backtick, never inside the span, which must run as pasted):
   - `node scripts/validate-fixtures.mjs`
   - `actionlint` (local equivalent of the CI step, which downloads actionlint 1.7.12 into `$RUNNER_TEMP` and checks its sha256; install shellcheck first, else the local run skips the `run:` script checks (verified 2026-10-29 @ cd0b1eb: `command -v shellcheck` → not found))
-  - "Restrict openapi-sync pull requests to their own spec" `(CI only: runs on openapi-sync/* pull requests or PRs by vmpt-openapi-sync[bot], .github/workflows/validate.yml:73)`
+  - "Restrict openapi-sync pull requests to their own spec" (CI only: runs on openapi-sync/* pull requests or PRs by vmpt-openapi-sync[bot], `.github/workflows/validate.yml:73`)
   - `node scripts/validate-openapi.mjs`
 - **Verified against**: cd0b1eb 2026-10-29 (checks and every ref in this file; retro bumps it)
 - **Coding standards**: none: smell baseline only. Repo rules from config: scripts are zero-dependency plain node, no `package.json` (`.github/workflows/validate.yml:31-33`); third-party actions pinned to a full SHA with a version comment (`.github/workflows/validate.yml:20-25`); LF everywhere (`.gitattributes:1`)

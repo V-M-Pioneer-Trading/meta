@@ -517,8 +517,8 @@ conditions every implementation must answer identically.
   pretending. What is fixed is the answer, the request to the center and the
   call count — everything the fixture can observe from outside.
 - **How the TS package ships its build.** One package, consumed as a GitHub
-  release tarball by fleet-service, automation-service, st-gateway and
-  agent-service, because GitHub Packages
+  release tarball by fleet-service, automation-service, st-gateway,
+  agent-service and ai-service (still on the pre-rename introspection-client 1.2.0), because GitHub Packages
   demands a token even for public packages and that breaks the Docker builds.
   Whether the built output is a committed `dist` or a `prepare` script is
   decided when the repository is created.
