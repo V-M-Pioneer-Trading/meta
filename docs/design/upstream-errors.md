@@ -104,7 +104,9 @@ The **outward** envelope each service presents to its own callers.
 agent-service answers plain text, fleet-service `{"error":{"message"}}`, and
 navigation-service RFC 9457 problem+json (whose field is `detail`, not
 `message`). Unifying those is a change to three public contracts with a
-dashboard in front of them, and a separate decision.
+dashboard in front of them, so it is out of this document's scope, not
+rejected: a consistent outward error format across the services is the goal,
+tracked in V-M-Pioneer-Trading/meta#32 and still to be designed.
 
 Two consequences worth being explicit about, because relaying the message is
 most of the point of this document:
@@ -113,7 +115,8 @@ most of the point of this document:
   It survives the gateway, and it is tempting as the machine-readable
   discriminator a message string is not. But it cannot be relayed *as a field*
   through a plain-text response or a `ProblemDetail`, so promising it here would
-  promise the envelope change this document declines to make. It also would not
+  promise the envelope change this document leaves to
+  V-M-Pioneer-Trading/meta#32. It also would not
   help the case above: the gateway's own errors — including both 503s — carry
   no code at all.
 - **command-interface cannot yet display two of the three.** Its
