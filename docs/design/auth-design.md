@@ -2,7 +2,8 @@
 
 *Outcome of a design interview, 2026-08-19. Status: increment 1 shipped 2026-08-21,
 increment 2 shipped 2026-08-22 (see [Increment 1 — shipped](#increment-1--shipped)
-and [Increment 2 — shipped](#increment-2--shipped) below); increments 3–4 pending.
+and [Increment 2 — shipped](#increment-2--shipped) below); increment 3 shipped
+2026-09-05 and increment 4 is done (see [Build order](#build-order)).
 [Decision 21](#21-one-verifier-every-service-asks-auth-service-what-a-token-carries),
 added 2026-09-20, reverses decision 4 and shipped 2026-09-29 through
 [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80).
@@ -11,7 +12,7 @@ added 2026-09-20, reverses decision 4 and shipped 2026-09-29 through
 [meta#59](https://github.com/V-M-Pioneer-Trading/meta/issues/59).
 [Decision 23](#23-agent-service-and-auth-service-move-from-go-to-typescript),
 added 2026-10-03, moves agent-service and auth-service from Go to TypeScript;
-not shipped, see
+shipped 2026-10-05, see
 [meta#103](https://github.com/V-M-Pioneer-Trading/meta/issues/103).*
 
 This document covers **two independent applications** that adopt the same vendor
@@ -1299,16 +1300,16 @@ languages cannot be held to a prose specification.
 
 #### Where the client code lives
 
-- **One TS package** in its own repository, consumed **by git tag** by
-  fleet-service, automation-service and st-gateway. No registry: GitHub
+- **One TS package** in its own repository, consumed **as a GitHub release
+  tarball** by fleet-service, automation-service, st-gateway, agent-service and ai-service (still on the pre-rename introspection-client 1.2.0).
+  No registry: GitHub
   Packages demands a token even for public packages, which breaks the Docker
-  builds. How built output ships — a committed `dist` or a `prepare` script —
-  is decided when the repository is created, not here.
-- **One Go implementation** (agent-service) and **one Java implementation**
-  (navigation-service). Two consumers between them and nothing to share; a
-  package each would be ceremony.
+  builds. Built output is never committed: `dist/` is ignored, and `prepack`
+  builds it into the tarball.
+- **One Java implementation** (navigation-service). One consumer and nothing
+  to share; a package would be ceremony.
 - **[`fixtures/introspection.json`](../../fixtures/introspection.json) binds
-  all three.** Service suites stop signing tokens and stand up a stub center
+  both.** Service suites stop signing tokens and stand up a stub center
   instead. Ephemeral keypairs remain only in auth-service's own tests, which is
   the only place a real signature is still checked.
 
@@ -1396,8 +1397,9 @@ most. Rollback is redeploying the previous image tag.
 - **`clerk-sdk-go` inside the center.** Its issuer check is satisfiable (the
   dev minter can emit a Clerk-shaped `iss`), so decision 10 is not the
   obstacle. The unknown is whether `jwt.Verify` accepts the M2M JWT that drives
-  the autopilot, which only a live token can answer. The swap is local to one
-  file; revisit with a live test.
+  the autopilot, which only a live token can answer. Moot since
+  [decision 23](#23-agent-service-and-auth-service-move-from-go-to-typescript):
+  the center verifies with `jose`, and there is no Go verifier left to swap.
 - **Checking `azp`.** Not required by any JWT specification; it is an OIDC
   claim that Clerk's manual-verification guide lists as a step. Its purpose is
   CSRF protection when the token travels in a **cookie**. Here it travels only
@@ -1611,8 +1613,8 @@ is proven live.
 
 ### 23. agent-service and auth-service move from Go to TypeScript
 
-*Status: **decided 2026-10-03; not shipped.** Both services are Go today,
-exactly as the rest of this document describes them. The rollout is
+*Status: **decided 2026-10-03; shipped 2026-10-05.** Both services are
+TypeScript today, with no Go left in either. The rollout is
 [meta#103](https://github.com/V-M-Pioneer-Trading/meta/issues/103); check its
 checkboxes before believing any sentence below describes what runs.*
 
@@ -1894,7 +1896,7 @@ fixed.
    [autopilot-spec.md](autopilot-spec.md)'s account/agent token confusion is
    corrected in place, with a dated note saying what was changed rather than a
    silent rewrite of a frozen record.
-5. **Central introspection.** ⬜ **Not started** — decided 2026-09-20, tracked
+5. **Central introspection.** ✅ Shipped 2026-09-29 — decided 2026-09-20, tracked
    as [meta#80](https://github.com/V-M-Pioneer-Trading/meta/issues/80), which
    holds the eleven ordered steps and is the only place to read what has
    actually landed. auth-service gains `POST /auth/v1/introspect`; every other

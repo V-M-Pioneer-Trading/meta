@@ -1,6 +1,6 @@
 # Autopilot Mode — Design Decisions
 
-*Outcome of design interviews (rounds 1–2), 2026-07-17. Status: agreed direction, pre-implementation.*
+*Outcome of design interviews (rounds 1–2), 2026-07-17. Status: agreed direction, implemented: st-gateway and automation-service run, with arm/pause/abort and shadow mode.*
 
 ## Vision
 

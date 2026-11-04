@@ -1,1 +1,4 @@
 .env
+
+# heinzelwerk task worktrees
+.claude/worktrees/

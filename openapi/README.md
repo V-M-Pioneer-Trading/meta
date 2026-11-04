@@ -33,4 +33,4 @@ token.
 The sync authenticates as an org-owned GitHub App installed on this repository
 only, with Contents and Pull requests write; its Client ID and private key are
 the org secrets `OPENAPI_SYNC_CLIENT_ID` and `OPENAPI_SYNC_PRIVATE_KEY`,
-granted to the three calling repositories only.
+granted to the four calling repositories only.

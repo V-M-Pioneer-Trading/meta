@@ -366,17 +366,18 @@ its current knobs.
 
 Every SpaceTraders call from every service funnels through st-gateway's single
 token bucket (default ~2 requests/second). Two FIFO queues share the budget:
-**interactive** (UI-originated) and **background** (everything else), with
+**interactive** (an operator's session) and **background** (everything else), with
 interactive always drained first — the dashboard stays responsive while the
 autopilot saturates the rest.
 
 Classification is derived from a **verified identity**, never declared
 (auth-design.md decision 2). The caller's `Authorization` — a Clerk session —
-is forwarded verbatim by agent/navigation/fleet-service, and st-gateway checks
-its signature itself: a human session (`sub` starting `user_`) earns the
-interactive lane; a machine token (automation-service's M2M, `sub` `mch_…`),
-no token, or a token that fails verification all land in `background`. There
-is no `X-Priority` header any more — an earlier design let callers declare
+is forwarded verbatim by agent/navigation/fleet-service, and st-gateway asks
+auth-service what it carries: a token the center answers for as an active
+`operator` earns the interactive lane; a machine token (automation-service's
+M2M), no token (the center is not even asked), a token the center does not
+vouch for, or a center that is down all land in `background`. There is no
+`X-Priority` header any more — an earlier design let callers declare
 their class, which meant anything could promote itself by sending a string.
 
 The one way to break this silently is a backend that verifies the session and
