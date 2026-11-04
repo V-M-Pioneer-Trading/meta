@@ -116,9 +116,8 @@ most of the point of this document:
   discriminator a message string is not. But it cannot be relayed *as a field*
   through a plain-text response or a `ProblemDetail`, so promising it here would
   promise the envelope change this document leaves to
-  V-M-Pioneer-Trading/meta#32. It also would not
-  help the case above: the gateway's own errors — including both 503s — carry
-  no code at all.
+  V-M-Pioneer-Trading/meta#32. It also would not help the case above: the
+  gateway's own errors — including both 503s — carry no code at all.
 - **command-interface cannot yet display two of the three.** Its
   `parseErrorMessage` reads `body.error.message`, `body.error` and
   `body.message` — none of which match a `ProblemDetail`'s `detail` or a
