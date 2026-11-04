@@ -526,7 +526,8 @@ conditions every implementation must answer identically.
   one on purpose and this follows it, for the same reason: it cannot be relayed
   as a field through agent-service's plain-text errors or navigation-service's
   `ProblemDetail`, so promising it here would promise an envelope change
-  neither document is making. The consequence to be explicit about is that
+  neither document is making (a consistent outward format is the goal, tracked
+  in V-M-Pioneer-Trading/meta#32). The consequence to be explicit about is that
   automation-service's failure classifier keys on the sentence — it must map
   this `503` to *upstream unavailable*, and it must not confuse it with
   st-gateway's `SpaceTraders credential not configured`, which is the one
