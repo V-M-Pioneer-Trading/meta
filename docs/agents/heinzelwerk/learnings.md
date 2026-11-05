@@ -41,6 +41,8 @@ Curated by tech-lead at the end of each team run, merged by a human. Max 80 line
 - **codebase** (adopted: automation-service/CHANGELOG.md): with no webhook configured, delivery attempts are deliberately not counted, else the retry budget burns and the full history pages once a URL appears, see ../automation-service/src/anomalyScheduler.ts:218
 - **codebase** (adopted: meta/docs/algorithms.md): a never-mined field scores on the fleet-wide average (or prior), a mean with no uncertainty, see ../automation-service/src/observations.ts:80
 - **codebase** (adopted: meta/docs/algorithms.md): `npm run replay` re-scores only field choice, not contract/scout wins; zero flips means the knob change does nothing, see ../automation-service/src/replay.ts:28
+- **warning** (#152): a typed tsoa `@Query`/`@Body` answers 400 where the old inline handler clamped or defaulted (`limit=1&limit=2`, an array body); declare such params `unknown` or read them through `@Request()`, see ../automation-service/src/controllers/autopilot.controller.ts:79
+- **warning** (#152): `src/generated/` is gitignored and built by `scripts/codegen.cjs`; a build context or CI job that skips codegen (Dockerfile COPY set, lint before tests) breaks only after the fact, see ../automation-service/Dockerfile
 
 ## st-gateway
 - **warning** (adopted: st-gateway/README.md): queues drain strictly interactive-first, no fairness cap; sustained operator traffic can starve background (autopilot), see ../st-gateway/src/tokenBucket.ts:76
