@@ -6,3 +6,4 @@ Rows come from tech-lead's docs PR at the end of a run (its own rejected proposa
 
 | proposal | rejected by | reason | revisit when |
 |---|---|---|---|
+| st-gateway publishes an OpenAPI spec | product (shaping meta#102, 2026-11-05) | `/proxy` is an opaque passthrough whose contract is `fixtures/gateway-errors.json`; `/health` and `/metrics` have no typed consumer | a service parses `/metrics`, or st-gateway gains routes of its own beyond health, metrics and proxy |

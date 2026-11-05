@@ -16,7 +16,10 @@ every service publishes OpenAPI 3.x already.
 | `navigation-service.json` | `openapi.json` | see navigation-service's README |
 | `auth-service.json` | `openapi.json` | `npm run openapi` |
 
-automation-service and st-gateway publish no spec yet (#102). auth-service's
+automation-service publishes no spec yet (#102, in progress via #152–#154).
+st-gateway publishes none on purpose: `/proxy` is an opaque passthrough whose
+contract is `fixtures/gateway-errors.json`, and `/health` and `/metrics` have no
+typed consumer (see `docs/agents/heinzelwerk/out-of-scope.md`). auth-service's
 spec covers its public and internal routes; the repository is public, so
 publishing it here reveals nothing new.
 
