@@ -36,12 +36,15 @@ Curated by tech-lead at the end of each team run, merged by a human. Max 80 line
 - **codebase** (adopted: meta/docs/design/auth-design.md): re-registration reuses the stored call sign and email; never drop `email` from the register call, see ../auth-service/src/poller.ts:186
 
 ## automation-service
-- **warning** (adopted: meta/docs/design/auth-design.md): the policy-only knob fence keys on `kind`; `planner:advise` also writes `model` and `alert` knobs, so never grant it to a narrower human account without revisiting the fence, see ../automation-service/src/server.ts:503
+- **warning** (adopted: meta/docs/design/auth-design.md): the policy-only knob fence keys on `kind`; `planner:advise` also writes `model` and `alert` knobs, so never grant it to a narrower human account without revisiting the fence, see ../automation-service/src/controllers/planner.controller.ts:39
 - **warning** (adopted: automation-service/README.md): keep `ANOMALY_INTERVAL_MS` below `anomaly.dedupeCooldownMinutes`; `repeated_denied` reads only events inside the window, see ../automation-service/src/anomaly.ts:341
 - **codebase** (adopted: automation-service/CHANGELOG.md): with no webhook configured, delivery attempts are deliberately not counted, else the retry budget burns and the full history pages once a URL appears, see ../automation-service/src/anomalyScheduler.ts:218
 - **codebase** (adopted: meta/docs/algorithms.md): a never-mined field scores on the fleet-wide average (or prior), a mean with no uncertainty, see ../automation-service/src/observations.ts:80
 - **codebase** (adopted: meta/docs/algorithms.md): `npm run replay` re-scores only field choice, not contract/scout wins; zero flips means the knob change does nothing, see ../automation-service/src/replay.ts:28
 - **warning** (#152): a typed tsoa `@Query`/`@Body` answers 400 where the old inline handler clamped or defaulted (`limit=1&limit=2`, an array body); declare such params `unknown` or read them through `@Request()`, see ../automation-service/src/controllers/autopilot.controller.ts:79
+- **warning** (#153): never add tsoa `@Security` in automation-service: with no `routes.authenticationModule` its generated `authenticateMiddleware` calls an undefined function and crashes the process on the first scoped request; the spec's `security` is derived from `x-auth` instead, see ../automation-service/scripts/write-openapi.cjs:22
+- **codebase** (#153): `openapi.test.ts` reads the committed `openapi.json`, so a controller `x-auth` that disagrees with `routePolicy` passes locally until `npm run openapi`; only CI's currency check catches it, see ../automation-service/src/__tests__/openapi.test.ts:9
+- **codebase** (#153): tsoa names each operationId after the method and never checks uniqueness; a test keeps them unique, so a new controller method needs a name no other controller uses, see ../automation-service/src/__tests__/openapi.test.ts:57
 - **warning** (#152): automation-service src/generated is gitignored and built by `../automation-service/scripts/codegen.cjs`; a build context or CI job that skips codegen (Dockerfile COPY set, lint before tests) breaks only after the fact, see ../automation-service/Dockerfile
 
 ## st-gateway
