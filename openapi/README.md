@@ -15,13 +15,14 @@ every service publishes OpenAPI 3.x already.
 | `agent-service.json` | `openapi.json` | `npm run openapi` |
 | `navigation-service.json` | `openapi.json` | see navigation-service's README |
 | `auth-service.json` | `openapi.json` | `npm run openapi` |
+| `automation-service.json` | `openapi.json` | `npm run openapi` |
 
-automation-service publishes no spec yet (#102, in progress via #152–#154).
 st-gateway publishes none on purpose: `/proxy` is an opaque passthrough whose
 contract is `fixtures/gateway-errors.json`, and `/health` and `/metrics` have no
 typed consumer (see `docs/agents/heinzelwerk/out-of-scope.md`). auth-service's
-spec covers its public and internal routes; the repository is public, so
-publishing it here reveals nothing new.
+and automation-service's specs list every route with its scope (internal
+routes included); both repositories are public, so publishing them here reveals
+nothing new.
 
 **Adding a service** takes two pull requests: its own (a committed spec, a CI
 check that it is current, and the caller job) and one here adding its name to
@@ -36,4 +37,4 @@ token.
 The sync authenticates as an org-owned GitHub App installed on this repository
 only, with Contents and Pull requests write; its Client ID and private key are
 the org secrets `OPENAPI_SYNC_CLIENT_ID` and `OPENAPI_SYNC_PRIVATE_KEY`,
-granted to the four calling repositories only.
+granted to the five calling repositories only.
