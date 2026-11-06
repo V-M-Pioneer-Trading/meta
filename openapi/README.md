@@ -20,9 +20,10 @@ every service publishes OpenAPI 3.x already.
 st-gateway publishes none on purpose: `/proxy` is an opaque passthrough whose
 contract is `fixtures/gateway-errors.json`, and `/health` and `/metrics` have no
 typed consumer (see `docs/agents/heinzelwerk/out-of-scope.md`). auth-service's
-and automation-service's specs list every route with its scope (internal
-routes included); both repositories are public, so publishing them here reveals
-nothing new.
+spec covers its public and internal routes; the repository is public, so
+publishing it here reveals nothing new. automation-service's spec lists every
+route with its scope; its repository is public too, so publishing it reveals
+nothing new either.
 
 **Adding a service** takes two pull requests: its own (a committed spec, a CI
 check that it is current, and the caller job) and one here adding its name to
