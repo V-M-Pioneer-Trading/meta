@@ -7,15 +7,169 @@
     "requestBodies": {},
     "responses": {},
     "schemas": {
-      "Record_string.unknown_": {
-        "properties": {},
-        "additionalProperties": {},
+      "RouteWaypoint": {
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "systemSymbol": {
+            "type": "string"
+          },
+          "x": {
+            "type": "number",
+            "format": "double"
+          },
+          "y": {
+            "type": "number",
+            "format": "double"
+          }
+        },
         "type": "object",
-        "description": "Construct a type with a set of properties K of type T"
+        "additionalProperties": {}
       },
-      "ShipActionResponse": {
-        "$ref": "#/components/schemas/Record_string.unknown_",
-        "description": "Every route here answers with SpaceTraders' response body, unmodified."
+      "ShipRoute": {
+        "properties": {
+          "destination": {
+            "$ref": "#/components/schemas/RouteWaypoint"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/RouteWaypoint"
+          },
+          "departureTime": {
+            "type": "string"
+          },
+          "arrival": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "ShipNav": {
+        "properties": {
+          "systemSymbol": {
+            "type": "string"
+          },
+          "waypointSymbol": {
+            "type": "string"
+          },
+          "route": {
+            "$ref": "#/components/schemas/ShipRoute"
+          },
+          "status": {
+            "type": "string"
+          },
+          "flightMode": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "OrbitShipResponse": {
+        "properties": {
+          "data": {
+            "properties": {
+              "nav": {
+                "$ref": "#/components/schemas/ShipNav"
+              }
+            },
+            "additionalProperties": {},
+            "type": "object"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "DockShipResponse": {
+        "properties": {
+          "data": {
+            "properties": {
+              "nav": {
+                "$ref": "#/components/schemas/ShipNav"
+              }
+            },
+            "additionalProperties": {},
+            "type": "object"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "ShipFuelConsumed": {
+        "properties": {
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "ShipFuel": {
+        "properties": {
+          "current": {
+            "type": "number",
+            "format": "double"
+          },
+          "capacity": {
+            "type": "number",
+            "format": "double"
+          },
+          "consumed": {
+            "$ref": "#/components/schemas/ShipFuelConsumed"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "ShipConditionEvent": {
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "component": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "NavigateShipResponse": {
+        "properties": {
+          "data": {
+            "properties": {
+              "events": {
+                "items": {
+                  "$ref": "#/components/schemas/ShipConditionEvent"
+                },
+                "type": "array"
+              },
+              "fuel": {
+                "$ref": "#/components/schemas/ShipFuel"
+              },
+              "nav": {
+                "$ref": "#/components/schemas/ShipNav"
+              }
+            },
+            "additionalProperties": {},
+            "type": "object"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
       },
       "NavigateRequestBody": {
         "properties": {
@@ -28,6 +182,154 @@
         ],
         "type": "object",
         "additionalProperties": false
+      },
+      "ExtractionYield": {
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "units": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "Extraction": {
+        "properties": {
+          "shipSymbol": {
+            "type": "string"
+          },
+          "yield": {
+            "$ref": "#/components/schemas/ExtractionYield"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "Cooldown": {
+        "properties": {
+          "shipSymbol": {
+            "type": "string"
+          },
+          "totalSeconds": {
+            "type": "number",
+            "format": "double"
+          },
+          "remainingSeconds": {
+            "type": "number",
+            "format": "double"
+          },
+          "expiration": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "shipSymbol",
+          "totalSeconds",
+          "remainingSeconds"
+        ],
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "CargoItem": {
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "units": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": [
+          "symbol",
+          "name",
+          "description",
+          "units"
+        ],
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "ShipCargo": {
+        "properties": {
+          "capacity": {
+            "type": "number",
+            "format": "double"
+          },
+          "units": {
+            "type": "number",
+            "format": "double"
+          },
+          "inventory": {
+            "items": {
+              "$ref": "#/components/schemas/CargoItem"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "capacity",
+          "units",
+          "inventory"
+        ],
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "WaypointModifier": {
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "ExtractResponse": {
+        "properties": {
+          "data": {
+            "properties": {
+              "events": {
+                "items": {
+                  "$ref": "#/components/schemas/ShipConditionEvent"
+                },
+                "type": "array"
+              },
+              "modifiers": {
+                "items": {
+                  "$ref": "#/components/schemas/WaypointModifier"
+                },
+                "type": "array"
+              },
+              "cargo": {
+                "$ref": "#/components/schemas/ShipCargo"
+              },
+              "cooldown": {
+                "$ref": "#/components/schemas/Cooldown"
+              },
+              "extraction": {
+                "$ref": "#/components/schemas/Extraction"
+              }
+            },
+            "additionalProperties": {},
+            "type": "object"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
       },
       "SurveyDeposit": {
         "properties": {
@@ -86,6 +388,181 @@
         "type": "object",
         "additionalProperties": false
       },
+      "ExtractWithSurveyResponse": {
+        "properties": {
+          "data": {
+            "properties": {
+              "events": {
+                "items": {
+                  "$ref": "#/components/schemas/ShipConditionEvent"
+                },
+                "type": "array"
+              },
+              "cargo": {
+                "$ref": "#/components/schemas/ShipCargo"
+              },
+              "cooldown": {
+                "$ref": "#/components/schemas/Cooldown"
+              },
+              "extraction": {
+                "$ref": "#/components/schemas/Extraction"
+              }
+            },
+            "additionalProperties": {},
+            "type": "object"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "ShipSurveyDeposit": {
+        "properties": {
+          "symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol"
+        ],
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "ShipSurvey": {
+        "description": "A survey as the survey route answers it. The closed `Survey` below is the request-side twin.",
+        "properties": {
+          "signature": {
+            "type": "string"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "deposits": {
+            "items": {
+              "$ref": "#/components/schemas/ShipSurveyDeposit"
+            },
+            "type": "array"
+          },
+          "expiration": {
+            "type": "string"
+          },
+          "size": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "signature",
+          "symbol",
+          "deposits",
+          "expiration",
+          "size"
+        ],
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "SurveyResponse": {
+        "properties": {
+          "data": {
+            "properties": {
+              "surveys": {
+                "items": {
+                  "$ref": "#/components/schemas/ShipSurvey"
+                },
+                "type": "array"
+              },
+              "cooldown": {
+                "$ref": "#/components/schemas/Cooldown"
+              }
+            },
+            "additionalProperties": {},
+            "type": "object"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "Agent": {
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "headquarters": {
+            "type": "string"
+          },
+          "credits": {
+            "type": "number",
+            "format": "double"
+          },
+          "startingFaction": {
+            "type": "string"
+          },
+          "shipCount": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "MarketTransaction": {
+        "properties": {
+          "waypointSymbol": {
+            "type": "string"
+          },
+          "shipSymbol": {
+            "type": "string"
+          },
+          "tradeSymbol": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "units": {
+            "type": "number",
+            "format": "double"
+          },
+          "pricePerUnit": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "RefuelShipResponse": {
+        "properties": {
+          "data": {
+            "properties": {
+              "cargo": {
+                "$ref": "#/components/schemas/ShipCargo"
+              },
+              "transaction": {
+                "$ref": "#/components/schemas/MarketTransaction"
+              },
+              "fuel": {
+                "$ref": "#/components/schemas/ShipFuel"
+              },
+              "agent": {
+                "$ref": "#/components/schemas/Agent"
+              }
+            },
+            "additionalProperties": {},
+            "type": "object"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
+      },
       "RefuelRequestBody": {
         "properties": {
           "units": {
@@ -98,6 +575,51 @@
         },
         "type": "object",
         "additionalProperties": false
+      },
+      "CooldownResponse": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Cooldown"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "CargoResponse": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ShipCargo"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "PatchNavResponse": {
+        "properties": {
+          "data": {
+            "properties": {
+              "events": {
+                "items": {
+                  "$ref": "#/components/schemas/ShipConditionEvent"
+                },
+                "type": "array"
+              },
+              "fuel": {
+                "$ref": "#/components/schemas/ShipFuel"
+              },
+              "nav": {
+                "$ref": "#/components/schemas/ShipNav"
+              }
+            },
+            "additionalProperties": {},
+            "type": "object"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
       },
       "PatchNavRequestBody": {
         "properties": {
@@ -116,6 +638,21 @@
         ],
         "type": "object",
         "additionalProperties": false
+      },
+      "TransferCargoResponse": {
+        "properties": {
+          "data": {
+            "properties": {
+              "cargo": {
+                "$ref": "#/components/schemas/ShipCargo"
+              }
+            },
+            "additionalProperties": {},
+            "type": "object"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
       },
       "TransferCargoRequestBody": {
         "properties": {
@@ -137,6 +674,63 @@
         ],
         "type": "object",
         "additionalProperties": false
+      },
+      "ContractTerms": {
+        "properties": {
+          "deadline": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "Contract": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "factionSymbol": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "terms": {
+            "$ref": "#/components/schemas/ContractTerms"
+          },
+          "accepted": {
+            "type": "boolean"
+          },
+          "fulfilled": {
+            "type": "boolean"
+          },
+          "expiration": {
+            "type": "string"
+          },
+          "deadlineToAccept": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "DeliverContractResponse": {
+        "properties": {
+          "data": {
+            "properties": {
+              "cargo": {
+                "$ref": "#/components/schemas/ShipCargo"
+              },
+              "contract": {
+                "$ref": "#/components/schemas/Contract"
+              }
+            },
+            "additionalProperties": {},
+            "type": "object"
+          }
+        },
+        "type": "object",
+        "additionalProperties": {}
       },
       "DeliverContractRequestBody": {
         "properties": {
@@ -169,7 +763,7 @@
     "contact": {}
   },
   "paths": {
-    "/ships/{shipSymbol}/orbit": {
+    "/api/fleet/v1/ships/{shipSymbol}/orbit": {
       "post": {
         "operationId": "Orbit",
         "responses": {
@@ -178,7 +772,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ShipActionResponse"
+                  "$ref": "#/components/schemas/OrbitShipResponse"
                 }
               }
             }
@@ -209,7 +803,7 @@
         ]
       }
     },
-    "/ships/{shipSymbol}/dock": {
+    "/api/fleet/v1/ships/{shipSymbol}/dock": {
       "post": {
         "operationId": "Dock",
         "responses": {
@@ -218,7 +812,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ShipActionResponse"
+                  "$ref": "#/components/schemas/DockShipResponse"
                 }
               }
             }
@@ -249,7 +843,7 @@
         ]
       }
     },
-    "/ships/{shipSymbol}/navigate": {
+    "/api/fleet/v1/ships/{shipSymbol}/navigate": {
       "post": {
         "operationId": "Navigate",
         "responses": {
@@ -258,7 +852,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ShipActionResponse"
+                  "$ref": "#/components/schemas/NavigateShipResponse"
                 }
               }
             }
@@ -299,7 +893,7 @@
         }
       }
     },
-    "/ships/{shipSymbol}/extract": {
+    "/api/fleet/v1/ships/{shipSymbol}/extract": {
       "post": {
         "operationId": "Extract",
         "responses": {
@@ -308,7 +902,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ShipActionResponse"
+                  "$ref": "#/components/schemas/ExtractResponse"
                 }
               }
             }
@@ -349,7 +943,7 @@
         }
       }
     },
-    "/ships/{shipSymbol}/extract/survey": {
+    "/api/fleet/v1/ships/{shipSymbol}/extract/survey": {
       "post": {
         "operationId": "ExtractWithSurvey",
         "responses": {
@@ -358,7 +952,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ShipActionResponse"
+                  "$ref": "#/components/schemas/ExtractWithSurveyResponse"
                 }
               }
             }
@@ -399,7 +993,7 @@
         }
       }
     },
-    "/ships/{shipSymbol}/survey": {
+    "/api/fleet/v1/ships/{shipSymbol}/survey": {
       "post": {
         "operationId": "Survey",
         "responses": {
@@ -408,7 +1002,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ShipActionResponse"
+                  "$ref": "#/components/schemas/SurveyResponse"
                 }
               }
             }
@@ -439,7 +1033,7 @@
         ]
       }
     },
-    "/ships/{shipSymbol}/refuel": {
+    "/api/fleet/v1/ships/{shipSymbol}/refuel": {
       "post": {
         "operationId": "Refuel",
         "responses": {
@@ -448,7 +1042,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ShipActionResponse"
+                  "$ref": "#/components/schemas/RefuelShipResponse"
                 }
               }
             }
@@ -489,7 +1083,7 @@
         }
       }
     },
-    "/ships/{shipSymbol}/cooldown": {
+    "/api/fleet/v1/ships/{shipSymbol}/cooldown": {
       "get": {
         "operationId": "Cooldown",
         "responses": {
@@ -498,10 +1092,13 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ShipActionResponse"
+                  "$ref": "#/components/schemas/CooldownResponse"
                 }
               }
             }
+          },
+          "204": {
+            "description": "No active cooldown: SpaceTraders answers with no body."
           }
         },
         "description": "Get the ship's current cooldown (e.g. after extract/survey).",
@@ -529,7 +1126,7 @@
         ]
       }
     },
-    "/ships/{shipSymbol}/cargo": {
+    "/api/fleet/v1/ships/{shipSymbol}/cargo": {
       "get": {
         "operationId": "Cargo",
         "responses": {
@@ -538,7 +1135,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ShipActionResponse"
+                  "$ref": "#/components/schemas/CargoResponse"
                 }
               }
             }
@@ -569,7 +1166,7 @@
         ]
       }
     },
-    "/ships/{shipSymbol}/nav": {
+    "/api/fleet/v1/ships/{shipSymbol}/nav": {
       "patch": {
         "operationId": "PatchNav",
         "responses": {
@@ -578,7 +1175,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ShipActionResponse"
+                  "$ref": "#/components/schemas/PatchNavResponse"
                 }
               }
             }
@@ -619,7 +1216,7 @@
         }
       }
     },
-    "/ships/{shipSymbol}/transfer": {
+    "/api/fleet/v1/ships/{shipSymbol}/transfer": {
       "post": {
         "operationId": "TransferCargo",
         "responses": {
@@ -628,7 +1225,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ShipActionResponse"
+                  "$ref": "#/components/schemas/TransferCargoResponse"
                 }
               }
             }
@@ -669,7 +1266,7 @@
         }
       }
     },
-    "/contracts/{contractId}/deliver": {
+    "/api/fleet/v1/contracts/{contractId}/deliver": {
       "post": {
         "operationId": "Deliver",
         "responses": {
@@ -678,7 +1275,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Record_string.unknown_"
+                  "$ref": "#/components/schemas/DeliverContractResponse"
                 }
               }
             }
