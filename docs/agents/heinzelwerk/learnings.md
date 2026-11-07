@@ -59,9 +59,9 @@ Curated by tech-lead at the end of each team run, merged by a human. Max 80 line
 - **codebase** (adopted: fleet-service/README.md): `CORS_ALLOWED_ORIGIN` is a single string, not a list, see ../fleet-service/src/config.ts:25
 
 ## navigation-service
-- **warning** (adopted: navigation-service/README.md): waypoints and shipyards have no TTL; a mutated object stays wrong until `forceRefresh=true`, see ../navigation-service/src/main/java/de/vnm/navigation/service/WaypointService.java:25
+- **warning** (adopted: navigation-service/README.md): waypoints and shipyards have no TTL (a mutated object stays wrong until `forceRefresh=true`), and `markets`/`shipyards` rows are never evicted, so the SQLite file grows with every waypoint visited, see ../navigation-service/src/main/java/de/vnm/navigation/service/WaypointService.java:25
 - **discovery** (adopted: navigation-service/README.md): first listing of a system walks every upstream page before answering (all-or-nothing), see ../navigation-service/src/main/java/de/vnm/navigation/service/WaypointService.java:118
-- **codebase** (adopted: navigation-service/README.md): `markets` and `shipyards` rows are never evicted; the SQLite file grows with waypoints ever visited, see ../navigation-service/src/main/java/de/vnm/navigation/repository/WaypointRepository.java:56
+- **warning** (#172): navigation-service `api/schema` records only feed the spec; handlers still return the raw upstream JSON, old cache rows included, so the spec can drift from what is served. springdoc 2.7.0 drops `@Schema(additionalProperties = TRUE)` under OAS 3.0.1; the `openBodyModels` customizer sets it instead and opens every component schema that has properties, see ../navigation-service/src/main/java/de/vnm/navigation/config/OpenApiConfig.java:58
 
 ## command-interface
 - **discovery** (adopted: command-interface/README.md): knob saves are last-write-wins; the PUT sends only `{value}` with no version, see ../command-interface/src/api/automationService.ts:92
