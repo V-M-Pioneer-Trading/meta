@@ -1,6 +1,6 @@
 # TypeScript backends publish OpenAPI from tsoa controllers
 
-A TypeScript backend writes its routes as tsoa controllers; tsoa generates the Express routes and the committed `openapi.json` from the same source, CI refuses a stale file, and the openapi-sync caller job proposes it to `openapi/` here. fleet-, agent- and auth-service work so; automation-service follows (meta#102, #152–#154).
+A TypeScript backend writes its routes as tsoa controllers; tsoa generates the Express routes and the committed `openapi.json` from the same source, CI refuses a stale file, and the openapi-sync caller job proposes it to `openapi/` here. fleet-, agent-, auth- and automation-service work so (automation-service since meta#102, #152–#154).
 
 ## Considered Options
 

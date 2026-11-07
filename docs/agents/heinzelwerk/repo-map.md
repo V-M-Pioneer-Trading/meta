@@ -28,7 +28,7 @@ Verified against cd0b1eb 2026-10-29.
 - fleet-service and navigation-service copies: no pin file, docs say "verbatim" (`../fleet-service/src/__tests__/gatewayErrorConformance.test.ts:6-7`, `../navigation-service/src/test/java/de/vnm/navigation/client/GatewayErrorConformanceTest.java:33-34`)
 
 ## OpenAPI
-- `openapi/{agent,auth,fleet,navigation}-service.json`; automation-service and st-gateway publish none (#102) (`openapi/README.md:12-19`)
+- `openapi/{agent,auth,automation,fleet,navigation}-service.json`; st-gateway publishes none (#102) (`openapi/README.md:12-26`)
 - Callers `uses: …/openapi-sync.yml@main`, spec-path `openapi.json`: `../agent-service/.github/workflows/container.yml:338`, `../auth-service/.github/workflows/container.yml:305`, `../fleet-service/.github/workflows/container.yml:230`, `../navigation-service/.github/workflows/container.yml:237`
 - New service = PR there plus PR here adding it to `SERVICES` (`openapi/README.md:23-25`, `scripts/validate-openapi.mjs:27`)
 

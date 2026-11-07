@@ -45,6 +45,7 @@ Curated by tech-lead at the end of each team run, merged by a human. Max 80 line
 - **warning** (#153): never add tsoa `@Security` in automation-service: with no `routes.authenticationModule` its generated `authenticateMiddleware` calls an undefined function and crashes the process on the first scoped request; the spec's `security` is derived from `x-auth` instead, see ../automation-service/scripts/write-openapi.cjs:22
 - **codebase** (#153): `openapi.test.ts` reads the committed `openapi.json`, so a controller `x-auth` that disagrees with `routePolicy` passes locally until `npm run openapi`; only CI's currency check catches it, see ../automation-service/src/__tests__/openapi.test.ts:9
 - **codebase** (#153): tsoa names each operationId after the method and never checks uniqueness; a test keeps them unique, so a new controller method needs a name no other controller uses, see ../automation-service/src/__tests__/openapi.test.ts:57
+- **warning** (#154): a red `sync-openapi` job is recovered with "Re-run failed jobs", never `workflow_dispatch`: a dispatch on main reruns `docker` and redeploys production; the re-run syncs only while that commit is still the tip of main, see ../automation-service/.github/workflows/container.yml:117
 - **warning** (#152): automation-service src/generated is gitignored and built by `../automation-service/scripts/codegen.cjs`; a build context or CI job that skips codegen (Dockerfile COPY set, lint before tests) breaks only after the fact, see ../automation-service/Dockerfile
 
 ## st-gateway
