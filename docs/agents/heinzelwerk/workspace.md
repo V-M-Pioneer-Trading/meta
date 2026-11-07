@@ -24,7 +24,7 @@ This repo is the **tickets repo** of a multi-repo workspace. Mode rules live in 
 
 ## Who calls whom
 
-- command-interface → agent-service (provider): HTTP reads + accept/fulfill/purchase/sell, `../command-interface/src/api/agentService.ts:19-51`; contract `openapi/agent-service.json`
+- command-interface → agent-service (provider): HTTP reads + accept/fulfill/purchase/sell through a generated client, `../command-interface/src/api/agentService.ts:28-71`; contract `openapi/agent-service.json`, copied into `../command-interface/openapi/` and pinned by `../command-interface/openapi/meta-commit.txt`
 - command-interface → fleet-service: HTTP ship actions, `../command-interface/src/api/fleetService.ts:23-80`; contract `openapi/fleet-service.json`
 - command-interface → navigation-service: HTTP waypoint/market/shipyard reads, `../command-interface/src/api/navigationService.ts:19-28`; contract `openapi/navigation-service.json`
 - command-interface → automation-service: HTTP autopilot/knobs/metrics, `../command-interface/src/api/automationService.ts:60-94`; contract `openapi/automation-service.json`, synced since #154 (`openapi/README.md:18`), but types still hand-kept vs `../automation-service/src` (`../command-interface/src/api/types.ts:1-12`)
@@ -50,6 +50,7 @@ This repo is the **tickets repo** of a multi-repo workspace. Mode rules live in 
 
 - Fixture pins: change `fixtures/*` first, then re-copy in every vendoring repo and update its SOURCE commit + sha and any code literal (`../navigation-service/src/test/resources/introspection/SOURCE.txt:16`, `../st-gateway/src/__tests__/lane.conformance.test.ts:30`, `../ts-introspection-client/test/conformance.test.ts:69-71`, `../navigation-service/src/test/java/de/vnm/navigation/introspection/web/IntrospectionConformanceTest.java:72`). `introspection.json` stays `-text` (`.gitattributes:10`)
 - openapi-sync: called `@main` by five backends, so a meta change lands in their next main run (`.github/workflows/validate.yml:48-51`); a new service needs its name in `SERVICES` here first, because the sync's `propose` job validates with meta main's script (`scripts/validate-openapi.mjs:27`, `openapi/README.md:28-30`)
+- Spec copies in command-interface: a change to `openapi/agent-service.json` here reaches the dashboard only after `npm run openapi:refresh -- <sha>` there (`../command-interface/scripts/openapi-refresh.mjs`); until the drift check of meta#174 lands, nothing flags a stale copy
 - clerk-client / eslint-config: a change ships only after release (tag = `package.json` version, on main) and a manual URL + lockfile bump in each consumer (`../ts-introspection-client/README.md:659-662`, `../eslint-config/README.md:204-212`)
 - ai-service still pins old `introspection-client` v1.2.0 from the pre-rename repo URL (`../ai-service/package.json:17`)
 - Deploy rides SSM docs: st-gateway has no stack and redeploys through agent-service's doc, restarting its MySQL (`../st-gateway/.github/workflows/container.yml:168-171`); a `terraform apply` that changes a doc re-runs bootstrap and restarts containers (`../V-M-Pioneer-Trading_infrastructure/README.md:393-395`); never apply during a service CI deploy (`../V-M-Pioneer-Trading_infrastructure/README.md:134-136`)
