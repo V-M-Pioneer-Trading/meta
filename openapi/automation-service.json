@@ -1,0 +1,1370 @@
+{
+  "openapi": "3.0.0",
+  "components": {
+    "examples": {},
+    "headers": {},
+    "parameters": {},
+    "requestBodies": {},
+    "responses": {},
+    "schemas": {
+      "KnobClass": {
+        "type": "string",
+        "enum": [
+          "model",
+          "policy",
+          "alert"
+        ],
+        "description": "Which kind of number a knob holds. This distinction is the reason knobs are\ntrustworthy at all, so it's worth stating plainly:\n\n- **`model`** — a claim about how the universe behaves (\"ships fly 30 units\n  an hour\", \"a mining cycle nets 5000 credits\"). These are *facts to be\n  measured*, not preferences. The autopilot calibrates them from its own\n  observations (see `observations.ts`); the stored value is only a cold-start\n  prior for before there's data. Editing one doesn't change reality — it\n  changes what the planner *believes* about reality, which is how you get a\n  fleet confidently flying to the wrong asteroid. Operators can still write\n  them (useful for testing a hypothesis); the AI supervisor cannot.\n\n- **`policy`** — a preference with no true value (\"favor contracts over\n  mining\", \"never drop below 50k credits\"). Nothing can measure these; they\n  encode what the operator wants. This is the only class the AI supervisor\n  may write, and it's a complete set of levers for the trade-offs it's asked\n  to manage.\n\n- **`alert`** — the thresholds that decide when something is wrong. Held\n  deliberately out of the AI's reach: an agent that can widen its own alarm\n  thresholds will eventually resolve \"profit dropped\" by deciding profit\n  drops are fine. Only an operator moves these."
+      },
+      "Knob": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "class": {
+            "$ref": "#/components/schemas/KnobClass"
+          },
+          "value": {
+            "type": "number",
+            "format": "double"
+          },
+          "default": {
+            "type": "number",
+            "format": "double"
+          },
+          "min": {
+            "type": "number",
+            "format": "double"
+          },
+          "max": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "class",
+          "value",
+          "default",
+          "min",
+          "max",
+          "description"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "KnobsAnswer": {
+        "properties": {
+          "knobs": {
+            "items": {
+              "$ref": "#/components/schemas/Knob"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "knobs"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ErrorBody": {
+        "description": "The error envelope every answer from this service uses.",
+        "properties": {
+          "error": {
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "KnobAnswer": {
+        "properties": {
+          "knob": {
+            "$ref": "#/components/schemas/Knob"
+          }
+        },
+        "required": [
+          "knob"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "Record_string.number_": {
+        "properties": {},
+        "additionalProperties": {
+          "type": "number",
+          "format": "double"
+        },
+        "type": "object",
+        "description": "Construct a type with a set of properties K of type T"
+      },
+      "Provenance": {
+        "type": "string",
+        "enum": [
+          "measured",
+          "prior"
+        ]
+      },
+      "CalibratedModel": {
+        "description": "The calibrated model the planner scores with. Every field carries its own\nprovenance so a `planner_assignment` event records not just what was\nbelieved, but whether it was measured or assumed — which is the difference\nbetween a decision you can defend and one you can only explain.",
+        "properties": {
+          "creditsPerCycleByWaypoint": {
+            "$ref": "#/components/schemas/Record_string.number_"
+          },
+          "fleetCreditsPerCycle": {
+            "type": "number",
+            "format": "double",
+            "description": "Used for fields never mined before: the fleet-wide average, or the prior."
+          },
+          "speedUnitsPerHour": {
+            "type": "number",
+            "format": "double"
+          },
+          "overheadHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "fuelCreditsPerUnitDistance": {
+            "type": "number",
+            "format": "double"
+          },
+          "provenance": {
+            "properties": {
+              "waypointsWithOwnAverage": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "description": "Fields with enough history to be scored on their own measured revenue, not the fleet average."
+              },
+              "refuelSampleCount": {
+                "type": "number",
+                "format": "double"
+              },
+              "flightSampleCount": {
+                "type": "number",
+                "format": "double"
+              },
+              "miningSampleCount": {
+                "type": "number",
+                "format": "double"
+              },
+              "fuel": {
+                "$ref": "#/components/schemas/Provenance"
+              },
+              "overhead": {
+                "$ref": "#/components/schemas/Provenance"
+              },
+              "speed": {
+                "$ref": "#/components/schemas/Provenance"
+              },
+              "creditsPerCycle": {
+                "$ref": "#/components/schemas/Provenance"
+              }
+            },
+            "required": [
+              "waypointsWithOwnAverage",
+              "refuelSampleCount",
+              "flightSampleCount",
+              "miningSampleCount",
+              "fuel",
+              "overhead",
+              "speed",
+              "creditsPerCycle"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "creditsPerCycleByWaypoint",
+          "fleetCreditsPerCycle",
+          "speedUnitsPerHour",
+          "overheadHours",
+          "fuelCreditsPerUnitDistance",
+          "provenance"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ModelAnswer": {
+        "properties": {
+          "model": {
+            "$ref": "#/components/schemas/CalibratedModel"
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ReplanAnswer": {
+        "properties": {
+          "requested": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "nullable": false
+          }
+        },
+        "required": [
+          "requested"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "MetricsRollup": {
+        "properties": {
+          "windowStart": {
+            "type": "string"
+          },
+          "windowEnd": {
+            "type": "string"
+          },
+          "computedAt": {
+            "type": "string"
+          },
+          "creditsPerHour": {
+            "type": "number",
+            "format": "double"
+          },
+          "extractionUnits": {
+            "type": "number",
+            "format": "double"
+          },
+          "errorRate": {
+            "type": "number",
+            "format": "double",
+            "description": "Fraction (0..1) of ship-task events in the window — any task kind — that were tick errors or task failures."
+          }
+        },
+        "required": [
+          "windowStart",
+          "windowEnd",
+          "computedAt",
+          "creditsPerHour",
+          "extractionUnits",
+          "errorRate"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "Record_string.unknown_": {
+        "properties": {},
+        "additionalProperties": {},
+        "type": "object",
+        "description": "Construct a type with a set of properties K of type T"
+      },
+      "EventLogEntry": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "occurredAt": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "detail": {
+            "$ref": "#/components/schemas/Record_string.unknown_"
+          }
+        },
+        "required": [
+          "id",
+          "occurredAt",
+          "type",
+          "detail"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "MetricsContextAnswer": {
+        "properties": {
+          "rollups": {
+            "items": {
+              "$ref": "#/components/schemas/MetricsRollup"
+            },
+            "type": "array"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventLogEntry"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "rollups",
+          "events"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "Anomaly": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "dedupeKey": {
+            "type": "string"
+          },
+          "detectedAt": {
+            "type": "string"
+          },
+          "detail": {
+            "$ref": "#/components/schemas/Record_string.unknown_"
+          },
+          "deliveredAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "deliveryAttempts": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "dedupeKey",
+          "detectedAt",
+          "detail",
+          "deliveredAt",
+          "deliveryAttempts"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "AnomalyDigestAnswer": {
+        "properties": {
+          "anomalies": {
+            "items": {
+              "$ref": "#/components/schemas/Anomaly"
+            },
+            "type": "array"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventLogEntry"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "anomalies",
+          "events"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "HealthStatus": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ],
+            "nullable": false
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "OkAnswer": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "nullable": false
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "AutopilotStatus": {
+        "type": "string",
+        "enum": [
+          "disarmed",
+          "armed",
+          "paused",
+          "aborted"
+        ]
+      },
+      "AutopilotMode": {
+        "type": "string",
+        "enum": [
+          "live",
+          "shadow"
+        ]
+      },
+      "AutopilotSnapshot": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/AutopilotStatus"
+          },
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AutopilotMode"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "status",
+          "mode"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "EventsAnswer": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventLogEntry"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "TaskKind": {
+        "type": "string",
+        "enum": [
+          "mining",
+          "contract",
+          "scout"
+        ]
+      },
+      "MiningPhase": {
+        "type": "string",
+        "enum": [
+          "TRAVEL_TO_ASTEROID",
+          "SURVEY",
+          "EXTRACT",
+          "TRAVEL_TO_MARKET",
+          "SELL"
+        ]
+      },
+      "ContractPhase": {
+        "type": "string",
+        "enum": [
+          "CONTRACT_TRAVEL_TO_MARKET",
+          "CONTRACT_PURCHASE",
+          "CONTRACT_TRAVEL_TO_DESTINATION",
+          "CONTRACT_DELIVER",
+          "CONTRACT_FULFILL"
+        ]
+      },
+      "ScoutPhase": {
+        "type": "string",
+        "enum": [
+          "SCOUT_TRAVEL",
+          "SCOUT_REFRESH"
+        ]
+      },
+      "TaskPhase": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/MiningPhase"
+          },
+          {
+            "$ref": "#/components/schemas/ContractPhase"
+          },
+          {
+            "$ref": "#/components/schemas/ScoutPhase"
+          }
+        ]
+      },
+      "SurveyData": {
+        "properties": {
+          "signature": {
+            "type": "string"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "deposits": {
+            "items": {
+              "properties": {
+                "symbol": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "symbol"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "expiration": {
+            "type": "string"
+          },
+          "size": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "signature",
+          "symbol",
+          "deposits",
+          "expiration",
+          "size"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ShipTask": {
+        "properties": {
+          "shipSymbol": {
+            "type": "string"
+          },
+          "taskKind": {
+            "$ref": "#/components/schemas/TaskKind"
+          },
+          "phase": {
+            "$ref": "#/components/schemas/TaskPhase"
+          },
+          "waitingUntil": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "survey": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SurveyData"
+              }
+            ],
+            "nullable": true
+          },
+          "tradeSymbol": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mining: the extracted good. Contract: the deliverable good."
+          },
+          "marketWaypoint": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mining: the sell market. Contract: the procurement market."
+          },
+          "asteroidWaypoint": {
+            "type": "string",
+            "nullable": true,
+            "description": "Where the planner sent the ship: an asteroid field to mine, or a market to\nscout. Null whenever the ship needs a fresh assignment — a brand new task,\nor the moment its last one completed. See `isIdle`."
+          },
+          "failureCount": {
+            "type": "number",
+            "format": "double",
+            "description": "Consecutive failures that are evidence about the current target — the game\nrefusing the action, a request it would not accept, our own code throwing.\nResets on any successful tick."
+          },
+          "unrelatedFailureCount": {
+            "type": "number",
+            "format": "double",
+            "description": "Consecutive failures that are evidence about the fleet's plumbing instead:\nan unreachable upstream, a rejected credential. Kept apart from\n`failureCount` because it is spent against a budget a hundred times longer\n(see `UNRELATED_FAILURE_RETRY_MULTIPLIER`), and one number cannot be spent\nagainst two budgets. Resets on any successful tick."
+          },
+          "contractId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Contract loop: the contract this task is working, and its delivery destination/progress."
+          },
+          "destinationWaypoint": {
+            "type": "string",
+            "nullable": true
+          },
+          "unitsDelivered": {
+            "type": "number",
+            "format": "double"
+          },
+          "cycleStartedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Running tallies for the cycle in progress. A cycle spans many ticks and can\nsurvive a restart, so what it earned and how long it took can only be known\nby accumulating here and reading it back when the cycle completes — at\nwhich point it becomes one row in `mining_observation` and the planner\nlearns something. See observations.ts."
+          },
+          "cycleRevenue": {
+            "type": "number",
+            "format": "double"
+          },
+          "cycleTravelDistance": {
+            "type": "number",
+            "format": "double"
+          },
+          "cycleUnitsExtracted": {
+            "type": "number",
+            "format": "double"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last time this task's row changed — drives the ship-idle anomaly check."
+          }
+        },
+        "required": [
+          "shipSymbol",
+          "taskKind",
+          "phase",
+          "waitingUntil",
+          "survey",
+          "tradeSymbol",
+          "marketWaypoint",
+          "asteroidWaypoint",
+          "failureCount",
+          "unrelatedFailureCount",
+          "contractId",
+          "destinationWaypoint",
+          "unitsDelivered",
+          "cycleStartedAt",
+          "cycleRevenue",
+          "cycleTravelDistance",
+          "cycleUnitsExtracted",
+          "updatedAt"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ShipTaskAnswer": {
+        "properties": {
+          "task": {
+            "$ref": "#/components/schemas/ShipTask"
+          }
+        },
+        "required": [
+          "task"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "securitySchemes": {
+      "clerk": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "A Clerk session or machine token, verified by auth-service (never here). The scope in a security requirement is the one the token's introspected scope must contain. OpenAPI 3.0 asks for an empty array on a non-oauth2 scheme; scopes are listed anyway so a reader sees what each route needs, and tsoa emits no 3.1 yet."
+      }
+    }
+  },
+  "info": {
+    "title": "Automation Service API",
+    "version": "1.0.0",
+    "description": "The SpaceTraders fleet autopilot. Every route of the service is listed; x-auth names what each requires of a caller (public, or a scope) and security repeats it as an OpenAPI requirement.",
+    "contact": {}
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/api/automation/v1/planner/knobs": {
+      "get": {
+        "operationId": "ListKnobs",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/KnobsAnswer"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorBody"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "class must be \"model\", \"policy\" or \"alert\"",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "description": "The tunable knobs. `?class=policy` is how the AI supervisor asks for exactly\nthe knobs it is allowed to write. Serving the filter here rather than\ntrusting the caller to filter means the restriction holds even if a client\nforgets it.",
+        "tags": [
+          "planner"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "class",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-auth": "public"
+      }
+    },
+    "/api/automation/v1/planner/model": {
+      "get": {
+        "operationId": "PlannerModel",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelAnswer"
+                }
+              }
+            }
+          }
+        },
+        "description": "What the planner currently believes about the universe, and whether each\nbelief was measured or assumed. The single most useful thing to look at\nwhen a ship goes somewhere surprising.",
+        "tags": [
+          "planner"
+        ],
+        "security": [],
+        "parameters": [],
+        "x-auth": "public"
+      }
+    },
+    "/api/automation/v1/planner/replan": {
+      "post": {
+        "operationId": "Replan",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplanAnswer"
+                }
+              }
+            }
+          }
+        },
+        "description": "Asks the fleet scheduler to replan now. Served only when the service has a fleet scheduler (mining configured).",
+        "tags": [
+          "planner"
+        ],
+        "security": [
+          {
+            "clerk": [
+              "planner:advise"
+            ]
+          }
+        ],
+        "parameters": [],
+        "x-auth": "planner:advise"
+      }
+    },
+    "/api/automation/v1/metrics/context": {
+      "get": {
+        "operationId": "MetricsContext",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsContextAnswer"
+                }
+              }
+            }
+          }
+        },
+        "description": "Recent metric rollups and events, as context for the AI supervisor. `rollupLimit` (default 10, max 200) and `eventLimit` (default 20, max 100); anything unusable is the default.",
+        "tags": [
+          "observability"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "rollupLimit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "eventLimit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-auth": "public"
+      }
+    },
+    "/api/automation/v1/anomalies/digest": {
+      "get": {
+        "operationId": "AnomaliesDigest",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnomalyDigestAnswer"
+                }
+              }
+            }
+          }
+        },
+        "description": "Anomalies and notable events inside a window. `windowMinutes` (default 60, max 10080), `anomalyLimit` (default 50, max 200), `eventLimit` (default 50, max 100); anything unusable is the default.",
+        "tags": [
+          "observability"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "windowMinutes",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "anomalyLimit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "eventLimit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-auth": "public"
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "Health",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatus"
+                }
+              }
+            }
+          }
+        },
+        "description": "Liveness check.",
+        "tags": [
+          "operational"
+        ],
+        "security": [],
+        "parameters": [],
+        "x-auth": "public"
+      }
+    },
+    "/api/automation/health": {
+      "get": {
+        "operationId": "ApiHealth",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatus"
+                }
+              }
+            }
+          }
+        },
+        "description": "Liveness check on the production path prefix.",
+        "tags": [
+          "operational"
+        ],
+        "security": [],
+        "parameters": [],
+        "x-auth": "public"
+      }
+    },
+    "/api/automation/v1/autopilot/status": {
+      "get": {
+        "operationId": "Status",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutopilotSnapshot"
+                }
+              }
+            }
+          }
+        },
+        "description": "Current status and mode. Waits for the restore of the persisted state, so a read never reports the \"disarmed\" a process starts with.",
+        "tags": [
+          "autopilot"
+        ],
+        "security": [],
+        "parameters": [],
+        "x-auth": "public"
+      }
+    },
+    "/api/automation/v1/autopilot/pause": {
+      "post": {
+        "operationId": "Pause",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AutopilotSnapshot"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorBody"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "not armed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "description": "Pauses an armed autopilot.",
+        "tags": [
+          "autopilot"
+        ],
+        "security": [
+          {
+            "clerk": [
+              "fleet:control"
+            ]
+          }
+        ],
+        "parameters": [],
+        "x-auth": "fleet:control"
+      }
+    },
+    "/api/automation/v1/autopilot/abort": {
+      "post": {
+        "operationId": "Abort",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AutopilotSnapshot"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorBody"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "neither armed nor paused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "description": "Aborts an armed or paused autopilot.",
+        "tags": [
+          "autopilot"
+        ],
+        "security": [
+          {
+            "clerk": [
+              "fleet:control"
+            ]
+          }
+        ],
+        "parameters": [],
+        "x-auth": "fleet:control"
+      }
+    },
+    "/api/automation/v1/autopilot/events": {
+      "get": {
+        "operationId": "Events",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsAnswer"
+                }
+              }
+            }
+          }
+        },
+        "description": "The newest events, newest first. `limit` defaults to 100 and is capped at 1000; anything unusable is the default.",
+        "tags": [
+          "autopilot"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-auth": "public"
+      }
+    },
+    "/api/automation/v1/autopilot/ships/{shipSymbol}": {
+      "get": {
+        "operationId": "Ship",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ShipTaskAnswer"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorBody"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "no task for this ship yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "description": "The task a ship is on. Served only when the service has a fleet scheduler (mining configured).",
+        "tags": [
+          "autopilot"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shipSymbol",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-auth": "public"
+      }
+    },
+    "/api/automation/v1/autopilot/arm": {
+      "post": {
+        "operationId": "Arm",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AutopilotSnapshot"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorBody"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "mode must be \"live\" or \"shadow\"",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "description": "Arms the autopilot. The body is `{ \"mode\": \"live\" | \"shadow\" }`, live when absent.",
+        "tags": [
+          "autopilot"
+        ],
+        "security": [
+          {
+            "clerk": [
+              "fleet:control"
+            ]
+          }
+        ],
+        "parameters": [],
+        "x-auth": "fleet:control",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "live",
+                      "shadow"
+                    ],
+                    "default": "live"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/automation/v1/events": {
+      "post": {
+        "operationId": "AppendEvent",
+        "responses": {
+          "201": {
+            "description": "Appended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/OkAnswer"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorBody"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "type must be a string starting with \"ai_\"; detail must be an object",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "description": "Appends an `ai_` audit event. `detail.actor` is stamped with the verified\n`sub` and overrides anything the caller put there: the audit trail says who\nwrote a row because the center said so, not because the row said so.",
+        "tags": [
+          "events"
+        ],
+        "security": [
+          {
+            "clerk": [
+              "events:write"
+            ]
+          }
+        ],
+        "parameters": [],
+        "x-auth": "events:write",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "pattern": "^ai_",
+                    "description": "Must start with \"ai_\"."
+                  },
+                  "detail": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Free-form object. detail.actor is overwritten with the caller's verified sub."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/automation/v1/planner/knobs/{name}": {
+      "put": {
+        "operationId": "SetKnob",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/KnobAnswer"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorBody"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "value must be a finite number; out of range",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "the caller's kind may not write this knob's class",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "no such knob",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "description": "Sets one knob to a finite number. The body is `{ \"value\": number }`. A machine caller may write `policy` knobs only.",
+        "tags": [
+          "planner"
+        ],
+        "security": [
+          {
+            "clerk": [
+              "planner:advise"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-auth": "planner:advise",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "value"
+                ],
+                "properties": {
+                  "value": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
