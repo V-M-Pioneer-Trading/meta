@@ -111,6 +111,8 @@ but auth-service verifies a token.*
 - **Autopilot mode** — `live` or `shadow`, chosen when arming. Switching between
   them always takes an explicit re-arm; a restart restores the status, always in
   shadow.
+- **Autopilot snapshot** — the autopilot status and mode read together, as one
+  answer. _Avoid_: calling the pair "autopilot status".
 - **Shadow mode** — the planner scores and logs every would-be decision on the
   live schedule, but never writes task state and never dispatches.
 - **Knob** — a bounded tunable (value, default, min, max) the planner or the
