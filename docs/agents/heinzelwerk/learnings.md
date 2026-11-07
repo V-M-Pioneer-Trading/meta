@@ -67,7 +67,7 @@ Curated by tech-lead at the end of each team run, merged by a human. Max 80 line
 - **discovery** (adopted: command-interface/README.md): knob saves are last-write-wins; the PUT sends only `{value}` with no version, see ../command-interface/src/api/automationService.ts:92
 - **warning** (#167): openapi-typescript 7.13 `--check` exits 0 after the first up-to-date `apis` entry in `redocly.yaml`, so a later service's stale output passes `npm test`; fix the check before a second service is added, see ../command-interface/package.json:16
 - **warning** (#167): `unwrap` returns `undefined` (typed `T`) for a 204 or empty 2xx, where `readResponse` returned `null` for 204; settle it before a route that answers 204 (fleet cooldown) moves to a generated client, see ../command-interface/src/api/serviceClient.ts:48
-- **codebase** (#167): generated clients use only the origin of `VITE_*_SERVICE_URL`; the mount in the env value is ignored because spec paths are absolute, see ../command-interface/src/api/serviceClient.ts:18
+- **warning** (#174): a check run from a `workflow_dispatch` run attaches to the commit but never counts toward a PR's required checks, and a PR pushed with `GITHUB_TOKEN` starts no `pull_request` runs; such a PR needs a human close and reopen to start its checks (verified 2026-11-07: throwaway command-interface#53, dispatched `test` on the head sha, rollup empty, mergeStateStatus BLOCKED)
 - **warning** (#167): `openapi-typescript` is pinned exactly; a Dependabot bump that changes its output reds `npm test`, so run `npm run openapi:generate` in the same PR, see ../command-interface/package.json:15
 
 ## eslint-config
