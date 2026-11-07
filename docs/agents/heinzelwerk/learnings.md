@@ -55,7 +55,7 @@ Curated by tech-lead at the end of each team run, merged by a human. Max 80 line
 
 ## fleet-service
 - **discovery** (adopted: fleet-service/README.md): no retries on any upstream call; one failed fetch fails the request, see ../fleet-service/src/spacetraders/client.ts:73
-- **warning** (adopted: fleet-service/README.md): response bodies are untyped `Record<string, unknown>` passthrough, so an upstream schema change reaches command-interface unannounced, see ../fleet-service/src/controllers/ships.controller.ts:13
+- **warning** (#170): fleet-service response types only feed the spec; bodies still pass through unvalidated, so an upstream change reaches consumers unannounced and the spec goes stale silently. Spec paths get `/api/fleet/v1` from the openapi script, not from `@Route`, see ../fleet-service/scripts/write-openapi.cjs:16
 - **codebase** (adopted: fleet-service/README.md): `CORS_ALLOWED_ORIGIN` is a single string, not a list, see ../fleet-service/src/config.ts:25
 
 ## navigation-service
